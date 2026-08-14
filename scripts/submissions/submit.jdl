@@ -1,0 +1,57 @@
+# Follow instructions from https://wiki.ekp.kit.edu/bin/view/EkpMain/EKPCondorCluster
+########################
+
+## Executable that will be run in job (has to be executable)
+Executable = /bin/sh
+Arguments = run.sh
+
+## Output/Error/Log files 
+Output = out.txt
+Error = err.txt
+Log = log.txt
+## Should the Output/Error be streamed
+stream_output = True
+stream_error = True
+
+## Small files (together<1GB) to copy into / out of the job
+#  Input files land in the starting dir of the job
+#  Output files land where the job was submitted 
+#    (can be changed with transfer_output_remaps)
+transfer_input_files = run.sh, scripts, reconstruction_model, uv.lock, pyproject.toml
+transfer_output_files = artifacts, reconstruction_model/training_checkpoints
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
+## Requested parameters
+#  2 hour walltime
++RequestWalltime = 7200
+#  single CPU
+RequestCPUs = 1
+#  32GB RAM (in MB)
+RequestMemory = 32000
+#  2TB scratch space (in kB)
+request_disk = 1000000000
+
+#  1 GPU
+request_GPUs = 1
+# Only available on TOpAS -> remote job
++RemoteJob = True
+
+requirements = TARGET.GPUs_DeviceName =?= "NVIDIA L40S"
+
+## Appropriate accounting group
+#  belle, ams, 
+#  cms.top, cms.higgs, cms.production, cms.jet
+accounting_group = delight
+
+## Choose container image to run the job on.
+## This still uses the same Docker image, but via the cluster's
+## Singularity/Apptainer integration.
+Universe = vanilla
++SingularityImage = "docker://cverstege/alma9-gridjob"
+
+## Copy local variables to job
+getenv = USER, USE_USER, WANDB_API_KEY
+environment = "JOB_MODE=smoke SMOKE_NUM_STEPS=5 SMOKE_BATCH_SIZE=2 WANDB_MODE=online RECONSTRUCTION_DISABLE_TORCH_COMPILE=1 TORCHDYNAMO_DISABLE=1"
+
+Queue

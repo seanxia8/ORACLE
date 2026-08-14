@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qp-simulator"
+version = "0.1.0"
+description = "Minimal standalone quasi-particle (QP) trace simulator (noise-free signal path)"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24"]
+
+[tool.setuptools]
+packages = ["qp_simulator"]
+
+[tool.setuptools.package-dir]
+qp_simulator = "."

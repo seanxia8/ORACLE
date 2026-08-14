@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+
+# uv / virtualenv
+.venv/
+build/
+dist/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Weights & Biases
+wandb/
+
+# Generated / local experiment outputs
+artifacts/
+/cache/
+training_data/
+derived/
+demo_source_psd.npy
+tutorial_custom_psd.npy
+training_checkpoints/
+checkpoints/
+runs/
+
+# Checkpoint files
+*.pt
+*.pth
+
+# Logs and stream captures
+*.log
+*.out
+*.err
+docker_stderror
+
+# LaTeX build artifacts
+*.aux
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.toc
+*.lof
+*.lot
+
+# OS
+.DS_Store

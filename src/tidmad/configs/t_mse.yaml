@@ -1,0 +1,5 @@
+# T-mse arm (PLAN_04 §3.1): raw MSE on the unwhitened spectrogram, in
+# measurement coordinates. Differs from t_chi2.yaml only in train.loss;
+# assert_configs_differ_only_in_loss enforces this.
+train:
+  loss: "mse"

@@ -1,0 +1,49 @@
+# Follow instructions from https://wiki.ekp.kit.edu/bin/view/EkpMain/EKPCondorCluster
+########################
+
+## Executable that will be run in job (has to be executable)
+Executable = ./run_eval_only_channel_masking.sh
+
+## Output/Error/Log files 
+Output = out.txt
+Error = err.txt
+Log = log.txt
+## Should the Output/Error be streamed
+stream_output = True
+stream_error = True
+
+## Small files (together<1GB) to copy into / out of the job
+#  Input files land in the starting dir of the job
+#  Output files land where the job was submitted 
+#    (can be changed with transfer_output_remaps)
+transfer_input_files = reconstruction, training_checkpoints, uv.lock, pyproject.toml, cache, position_MMC_V2.dat
+transfer_output_files = training_checkpoints, results
+
+## Requested parameters
+#  6 hour walltime
++RequestWalltime = 7200
+#  single CPU
+RequestCPUs = 1
+#  32GB RAM (in MB) 16GB test
+RequestMemory = 40000
+#  3TB scratch space (in kB) 100GB for test
+request_disk = 2500000000
+
+#  1 GPU
+request_GPUs = 1
+# Only available on TOpAS -> remote job
++RemoteJob = True
+requirements = (TARGET.CloudSite == "topas") && (TARGET.GPUs_DeviceName =?= "NVIDIA A100-PCIE-40GB")
+## Appropriate accounting group
+#  belle, ams, 
+#  cms.top, cms.higgs, cms.production, cms.jet
+accounting_group = DELight
+
+## Choose docker image to run the job on
+Universe = docker
+docker_image = cverstege/alma9-gridjob
+
+## Copy local variables to job
+getenv = USE_USER
+
+Queue
