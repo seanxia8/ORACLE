@@ -1,0 +1,36 @@
+# Full six-energy ER+NR pairwise training on NEMO2 L40S.
+
+Executable = /bin/sh
+Arguments = run.sh
+
+Output = scripts/train_full_l40s/pairwise_l40s.$(Cluster).out
+Error = scripts/train_full_l40s/pairwise_l40s.$(Cluster).err
+Log = scripts/train_full_l40s/pairwise_l40s.$(Cluster).log
+stream_output = True
+stream_error = True
+
+transfer_input_files = run.sh, scripts, reconstruction_model, uv.lock, pyproject.toml
+transfer_output_files = training_job_summary.json
+transfer_output_remaps = "training_job_summary.json=scripts/train_full_l40s/training_job_summary.$(Cluster).json"
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
++RequestWalltime = 345600
+RequestCPUs = 8
+RequestMemory = 64000
+request_disk = 2600000000
+
+request_GPUs = 1
++RemoteJob = True
+use_x509userproxy = True
+requirements = (TARGET.CloudSite =?= "BwForCluster-Nemo2") && (TARGET.GPUs_DeviceName =?= "NVIDIA L40S")
+
+accounting_group = delight
+
+Universe = vanilla
++SingularityImage = "docker://cverstege/alma9-gridjob"
+
+getenv = USER, USE_USER, WANDB_API_KEY, X509_USER_PROXY
+environment = "JOB_MODE=full_h5_stage WANDB_MODE=online RECONSTRUCTION_MODEL_VARIANT=pairwise_channel_masking RECONSTRUCTION_RECOIL_CLASSIFICATION=1 RECONSTRUCTION_SPATIAL_TARGET_INDICES=0,1 RECONSTRUCTION_SCALAR_LOSS_WEIGHTS=1.0,1.0,1.0 RECONSTRUCTION_WANDB_RUN=1 RECONSTRUCTION_WANDB_CHECKPOINT_ARTIFACTS=1 RECONSTRUCTION_WANDB_PROJECT=DELight_Reconstruction_Pairwise_Full RECONSTRUCTION_WANDB_RUN_NAME=pairwise_channel_masking_l40s_$(Cluster) RECONSTRUCTION_CHECKPOINT_DIR=artifacts/pairwise_full_l40s/checkpoints/$(Cluster) RECONSTRUCTION_REMOTE_CHECKPOINT_DIR=root://ceph-node-j.etp.kit.edu//dwong/training_runs/pairwise_l40s_$(Cluster) RECONSTRUCTION_LOCAL_CACHE_PATH=cache/pairwise_full_l40s_$(Cluster) RECONSTRUCTION_NUM_EPOCHS=20 RECONSTRUCTION_EVAL_STEP_PERIOD=250 RECONSTRUCTION_EVAL_NUM_BATCHES=32 RECONSTRUCTION_SAVE_CHECKPOINT_PERIOD=1000 RECONSTRUCTION_TOTAL_BATCH_SIZE=64 RECONSTRUCTION_DEVICE_BATCH_SIZE=8 RECONSTRUCTION_NUM_WORKERS=8 RECONSTRUCTION_MAX_OPEN_H5_FILES=32 RECONSTRUCTION_EXPECTED_H5_EVENTS_PER_FILE=100 RECONSTRUCTION_ENERGIES=10,20,50,100,200,500 RECONSTRUCTION_AMP_DTYPE=auto RECONSTRUCTION_SEED=42 FULL_H5_STAGE_PARALLELISM=4 RECONSTRUCTION_DISABLE_TORCH_COMPILE=1 TORCHDYNAMO_DISABLE=1"
+
+Queue

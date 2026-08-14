@@ -1,0 +1,33 @@
+# Probe the method used by submit_ref:
+# docker universe + cverstege/alma9-gridjob + topas A100.
+
+Executable = /bin/sh
+Arguments = scripts/condor_method_probe.sh
+
+Output = probe_a100_docker.out
+Error = probe_a100_docker.err
+Log = probe_a100_docker.log
+stream_output = True
+stream_error = True
+
+transfer_input_files = scripts
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
++RequestWalltime = 1800
+RequestCPUs = 1
+RequestMemory = 8000
+request_disk = 20000000
+request_GPUs = 1
++RemoteJob = True
+
+requirements = (TARGET.CloudSite == "topas") && (TARGET.GPUs_DeviceName =?= "NVIDIA A100-PCIE-40GB")
+accounting_group = DELight
+
+Universe = docker
+docker_image = cverstege/alma9-gridjob
+
+getenv = USER, USE_USER, WANDB_API_KEY
+environment = "PROBE_METHOD=a100_docker"
+
+Queue

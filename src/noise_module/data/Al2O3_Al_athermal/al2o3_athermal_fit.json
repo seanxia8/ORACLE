@@ -1,0 +1,59 @@
+{
+  "components": [
+    {
+      "type": "white",
+      "scale": 0.0030307426626081345,
+      "name": "johnson"
+    },
+    {
+      "type": "white",
+      "scale": 0.08999999999999998,
+      "name": "squid_white"
+    },
+    {
+      "type": "powerlaw",
+      "scale": 9.0,
+      "exponent": -1.0,
+      "reference_hz": 1.0,
+      "name": "squid_1_f"
+    },
+    {
+      "type": "rolloff",
+      "scale": 0.05976157531368565,
+      "corner_hz": 159.15494309189538,
+      "order": 2.0,
+      "kind": "lowpass",
+      "name": "td"
+    },
+    {
+      "type": "powerlaw",
+      "scale": 0.5442319404674618,
+      "exponent": -0.9,
+      "reference_hz": 1.0,
+      "name": "er"
+    }
+  ],
+  "params": {
+    "Johnson": {
+      "s0": 0.0030307426626081345
+    },
+    "SQUID": {
+      "s0": 0.08999999999999998,
+      "a": 9.0,
+      "knee_hz": 100.00000000000001
+    },
+    "TD": {
+      "s0": 0.05976157531368565,
+      "corner_hz": 159.15494309189538
+    },
+    "Er": {
+      "s0": 0.5442319404674618,
+      "alpha": -0.9
+    }
+  },
+  "validation": {
+    "median_ratio": 1.0,
+    "max_frac_dev": 2.220446049250313e-16,
+    "rms_frac_dev": 1.292223450914932e-16
+  }
+}

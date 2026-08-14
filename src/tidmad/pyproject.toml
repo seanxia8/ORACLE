@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tidmad"
+dynamic = ["version"]
+description = "TIDMAD band-frame STFT denoising arm (backbone from reconstruction_model, vendored Paper-1 benchmark helpers)"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "h5py>=3.11",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+    "scipy>=1.10",
+    "torch==2.5.1+cu124",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+wandb = ["wandb>=0.23.0"]
+
+[tool.setuptools]
+packages = ["tidmad", "tidmad._vendor"]
+
+[tool.setuptools.package-dir]
+tidmad = "."
+
+[tool.setuptools.dynamic]
+version = { attr = "tidmad.__version__" }
+
+[tool.setuptools.package-data]
+tidmad = ["configs/*.yaml"]

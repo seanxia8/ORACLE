@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "delight-reconstruction"
+version = "0.1.0"
+description = "DELight transformer reconstruction model and architecture catalog"
+requires-python = ">=3.9,<3.13"
+dependencies = [
+    "h5py>=3.11,<3.15",
+    "jaxtyping>=0.2,<0.3",
+    "matplotlib>=3.7,<3.10",
+    "numpy>=1.24,<2.0",
+    "pandas>=2.0,<2.3",
+    "torch==2.5.1+cu124",
+    "wandb>=0.23.0",
+    "zstandard>=0.25.0",
+]
+
+[tool.setuptools]
+packages = [
+    "reconstruction_model",
+    "reconstruction_model.models",
+    "reconstruction_model.legacy",
+]
+
+[tool.setuptools.package-dir]
+reconstruction_model = "."

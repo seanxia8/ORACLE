@@ -1,0 +1,5 @@
+# T-chi2 arm (PLAN_04 §3.1): Sigma^{-1}-weighted residual, i.e. MSE on the
+# whitened spectrogram, evaluated in measurement coordinates. Differs from
+# t_mse.yaml only in train.loss; assert_configs_differ_only_in_loss enforces this.
+train:
+  loss: "chi2"

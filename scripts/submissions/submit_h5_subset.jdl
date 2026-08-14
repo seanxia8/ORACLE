@@ -1,0 +1,35 @@
+# Follow instructions from https://wiki.ekp.kit.edu/bin/view/EkpMain/EKPCondorCluster
+########################
+
+Executable = /bin/sh
+Arguments = run.sh
+
+Output = out.txt
+Error = err.txt
+Log = log.txt
+stream_output = True
+stream_error = True
+
+transfer_input_files = run.sh, scripts, reconstruction_model, uv.lock, pyproject.toml, /ceph/srv/ssjostrom/training_small_complete/ER/ER_traces_energy_100_batch_0000.h5, /ceph/srv/ssjostrom/training_small_complete/NR/NR_traces_energy_100_batch_0000.h5
+transfer_output_files = artifacts, reconstruction_model/training_checkpoints
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
++RequestWalltime = 7200
+RequestCPUs = 1
+RequestMemory = 32000
+request_disk = 100000000
+
+request_GPUs = 1
++RemoteJob = True
+requirements = TARGET.GPUs_DeviceName =?= "NVIDIA L40S"
+
+accounting_group = delight
+
+Universe = vanilla
++SingularityImage = "docker://cverstege/alma9-gridjob"
+
+getenv = USER, USE_USER, WANDB_API_KEY
+environment = "JOB_MODE=h5_transferred H5_ENERGIES=100 H5_FILES_PER_ENERGY_RECOIL=1 WANDB_MODE=online RECONSTRUCTION_DISABLE_TORCH_COMPILE=1 TORCHDYNAMO_DISABLE=1 RECONSTRUCTION_NUM_STEPS=20 RECONSTRUCTION_EVAL_STEP_PERIOD=5 RECONSTRUCTION_SAVE_CHECKPOINT_PERIOD=10 RECONSTRUCTION_TOTAL_BATCH_SIZE=16 RECONSTRUCTION_DEVICE_BATCH_SIZE=4 RECONSTRUCTION_NUM_WORKERS=0"
+
+Queue

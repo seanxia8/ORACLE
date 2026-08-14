@@ -1,0 +1,43 @@
+[project]
+name = "oracle"
+version = "0.1.0"
+description = "Consequence-aware failure diagnostics for particle reconstruction"
+requires-python = ">=3.10,<3.13"
+dependencies = []
+
+[tool.uv.workspace]
+members = [
+    "src/noise_module",
+    "src/qp_simulator",
+    "src/reconstruction_model",
+    "src/tidmad",
+]
+
+# CUDA training torch (Linux GPU nodes). Override with
+#   uv sync --override <(echo 'tool.uv.sources: { torch: [{ index = "pypi" }] }')
+# or drop the cu124 local tag when developing on macOS/CPU.
+[[tool.uv.index]]
+name = "torch_cuda"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+default = false
+
+[tool.uv.sources]
+torch = { index = "torch_cuda" }
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+    "ipykernel>=6.31.0",
+    "matplotlib>=3.7",
+    "nbclient>=0.10",
+    "nbconvert>=7.0",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "statistical: confidence-aware ensemble statistical tests",
+    "integration: composed pipeline tests",
+    "calibration: empirical calibration and held-out validation tests",
+    "slow: larger validation or performance tests",
+]

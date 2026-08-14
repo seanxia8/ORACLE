@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "modular-noise-simulator"
+dynamic = ["version"]
+description = "Validated stationary, nonstationary, artifact, and multichannel noise simulation"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "scipy>=1.10"]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
+[tool.setuptools]
+packages = ["noise_module"]
+
+[tool.setuptools.package-dir]
+noise_module = "."
+
+[tool.setuptools.dynamic]
+version = { attr = "noise_module.__version__" }
+
+[tool.setuptools.package-data]
+noise_module = ["data/Al2O3_Al_athermal/*"]

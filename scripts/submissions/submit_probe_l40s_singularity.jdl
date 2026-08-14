@@ -1,0 +1,33 @@
+# Probe the method that has been matching quickly for us:
+# vanilla universe + Singularity/Apptainer Docker image + L40S.
+
+Executable = /bin/sh
+Arguments = scripts/condor_method_probe.sh
+
+Output = probe_l40s_singularity.out
+Error = probe_l40s_singularity.err
+Log = probe_l40s_singularity.log
+stream_output = True
+stream_error = True
+
+transfer_input_files = scripts
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
++RequestWalltime = 1800
+RequestCPUs = 1
+RequestMemory = 8000
+request_disk = 20000000
+request_GPUs = 1
++RemoteJob = True
+
+requirements = TARGET.GPUs_DeviceName =?= "NVIDIA L40S"
+accounting_group = delight
+
+Universe = vanilla
++SingularityImage = "docker://cverstege/alma9-gridjob"
+
+getenv = USER, USE_USER, WANDB_API_KEY
+environment = "PROBE_METHOD=l40s_singularity"
+
+Queue

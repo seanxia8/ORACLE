@@ -1,0 +1,32 @@
+Executable = /bin/sh
+Arguments = run.sh
+
+Output = scripts/train_full_l40s/probe_l40s.$(Cluster).out
+Error = scripts/train_full_l40s/probe_l40s.$(Cluster).err
+Log = scripts/train_full_l40s/probe_l40s.$(Cluster).log
+stream_output = True
+stream_error = True
+
+transfer_input_files = run.sh, scripts, reconstruction_model, uv.lock, pyproject.toml
+transfer_output_files = full_training_probe_nemo2.ok
+transfer_output_remaps = "full_training_probe_nemo2.ok=scripts/train_full_l40s/full_training_probe_nemo2.ok"
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
++RequestWalltime = 1800
+RequestCPUs = 2
+RequestMemory = 16000
+request_disk = 20000000
+request_GPUs = 1
++RemoteJob = True
+use_x509userproxy = True
+requirements = (TARGET.CloudSite =?= "BwForCluster-Nemo2") && (TARGET.GPUs_DeviceName =?= "NVIDIA L40S")
+accounting_group = delight
+
+Universe = vanilla
++SingularityImage = "docker://cverstege/alma9-gridjob"
+
+getenv = USER, USE_USER, WANDB_API_KEY, X509_USER_PROXY
+environment = "JOB_MODE=full_probe SITE_MODE=nemo2 WANDB_MODE=disabled RECONSTRUCTION_WANDB_RUN=0 RECONSTRUCTION_DISABLE_TORCH_COMPILE=1"
+
+Queue

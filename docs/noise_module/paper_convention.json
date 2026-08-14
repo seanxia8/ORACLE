@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "config_schema_version": 3,
+  "description": "Machine-readable companion to PAPER_CONVENTION.md: the discrete Gaussian noise-synthesis contract for NoiseGenerator.py, equation-ready for Paper 1 Appendix G.",
+  "symbols": {
+    "N": {"meaning": "trace length", "units": "samples"},
+    "f_s": {"meaning": "sampling frequency", "units": "Hz"},
+    "P_k": {"meaning": "one-sided PSD density at rFFT bin k", "units": "(signal units)^2 / Hz"},
+    "X_k": {"meaning": "rFFT coefficient at bin k, NumPy/scipy.fft unnormalised convention", "units": "signal units"},
+    "n_bins": {"meaning": "number of rFFT bins", "formula": "N // 2 + 1"}
+  },
+  "expected_rfft_bin_power": {
+    "interior": {"formula": "f_s * N * P_k / 2", "bin_range": "0 < k < N/2", "distribution": "circular_complex_gaussian"},
+    "dc": {"formula": "f_s * N * P_k", "bin_range": "k = 0", "distribution": "real_gaussian"},
+    "nyquist": {"formula": "f_s * N * P_k", "bin_range": "k = N/2 (even N only)", "distribution": "real_gaussian"}
+  },
+  "interior_bin_sampling": "X_k = (Re + i*Im) / sqrt(2) * sqrt(E|X_k|^2), Re,Im ~ N(0,1) i.i.d.",
+  "endpoint_bin_sampling": "X_k = Re * sqrt(E|X_k|^2), Re ~ N(0,1)",
+  "variance_power_definition_note": "power_definition='variance' forces the DC bin's stochastic contribution to zero; a nonzero deterministic mean is represented separately via deterministic_mean and excluded from the stochastic PSD.",
+  "irfft_normalization": "NumPy/scipy.fft unnormalised convention: forward transform unscaled, inverse (irfft) scaled by 1/N.",
+  "covariance_class": {
+    "fft_grid_default": "periodic_circulant",
+    "exact_finite_alternative": {
+      "function": "NoiseGenerator.sample_from_covariance",
+      "methods": ["circulant", "dense", "auto"],
+      "notes": "circulant: exact for the retained length-N prefix when the circulant embedding is positive semidefinite. dense: exact eigendecomposition of the literal Toeplitz matrix, verified via maximum_covariance_error metadata."
+    }
+  },
+  "obsolete_sampler_superseded": {
+    "description": "Paper 1 Equation 81: fixed-modulus, random-phase-only bins X_k = sqrt(P_k) * e^{i*phi}, phi ~ Uniform[0, 2*pi).",
+    "defect": "Reproduces the correct mean PSD but every realization has identical per-bin power (Rayleigh-modulus degenerate), invalidating chi-square/KS/periodogram-variance distributional statistics.",
+    "replacement": "circular_complex_gaussian interior bins as specified above, implemented in NoiseGenerator.sample_stationary_gaussian_from_rfft_power (NoiseGenerator.py:325-368)."
+  },
+  "custom_psd_scaling_modes": {
+    "absolute": "file units preserved",
+    "normalize": "file treated as a shape; rFFT-grid integral normalized to noise_power",
+    "scale": "file density multiplied by psd_scale (defaults to noise_power)",
+    "multiply": "backward-compatible alias for 'scale', normalized on config load"
+  },
+  "known_defect_fixed_2026_07": {
+    "location": "src/noise_geometry/noise/synthetic.py:generate_colored_noise",
+    "affected_experiments": ["S0", "S1", "S2", "S5"],
+    "defect": "DC bin used the interior-bin scale (f_s*N*P_k/2) instead of the endpoint scale (f_s*N*P_k), under-scaling DC variance by a factor of 2 while Nyquist was already scaled correctly.",
+    "fix_commit_note": "Fixed in this revision; see tests/test_generate_colored_noise_convention.py for regression gates.",
+    "noise_generator_py_status": "Not affected -- psd_density_to_rfft_power() already implements DC/Nyquist correctly; confirmed by tests/test_paper_convention_gates.py."
+  },
+  "statistical_acceptance_gates": [
+    "expected_time_domain_variance_from_psd_integral",
+    "normalized_interior_periodogram_is_exponential_mean_one",
+    "dc_and_nyquist_bins_real_and_full_endpoint_power",
+    "ensemble_psd_recovery_away_from_endpoints",
+    "circulant_covariance_recovery_on_fft_grid",
+    "exact_toeplitz_recovery_via_sample_from_covariance_dense"
+  ]
+}

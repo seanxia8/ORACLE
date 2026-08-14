@@ -1,0 +1,37 @@
+# Full six-energy ER+NR pairwise training on TopAS A100 or V100S.
+
+Executable = /bin/sh
+Arguments = run.sh
+
+Output = scripts/train_full_a100/pairwise_topas.$(Cluster).out
+Error = scripts/train_full_a100/pairwise_topas.$(Cluster).err
+Log = scripts/train_full_a100/pairwise_topas.$(Cluster).log
+stream_output = True
+stream_error = True
+
+transfer_input_files = run.sh, scripts, reconstruction_model, uv.lock, pyproject.toml
+transfer_output_files = training_job_summary.json
+transfer_output_remaps = "training_job_summary.json=scripts/train_full_a100/training_job_summary.$(Cluster).json"
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
++RequestWalltime = 604800
+RequestCPUs = 8
+RequestMemory = 64000
+request_disk = 100000000
+
+request_GPUs = 1
++RemoteJob = True
+use_x509userproxy = True
+requirements = (TARGET.CloudSite =?= "topas") && ((TARGET.GPUs_DeviceName =?= "NVIDIA A100-PCIE-40GB") || (TARGET.GPUs_DeviceName =?= "Tesla V100S-PCIE-32GB"))
+rank = ifThenElse(TARGET.GPUs_DeviceName =?= "NVIDIA A100-PCIE-40GB", 100, 10)
+
+accounting_group = DELight
+
+Universe = docker
+docker_image = cverstege/alma9-gridjob
+
+getenv = USER, USE_USER, WANDB_API_KEY, X509_USER_PROXY
+environment = "JOB_MODE=full_h5_direct WANDB_MODE=online FULL_H5_DIRECT_ROOT=/ceph/srv/dwong/training_samples_h5 RECONSTRUCTION_MODEL_VARIANT=pairwise_channel_masking RECONSTRUCTION_RECOIL_CLASSIFICATION=1 RECONSTRUCTION_SPATIAL_TARGET_INDICES=0,1 RECONSTRUCTION_SCALAR_LOSS_WEIGHTS=1.0,1.0,1.0 RECONSTRUCTION_WANDB_RUN=1 RECONSTRUCTION_WANDB_PROJECT=DELight_Reconstruction_Pairwise_Full RECONSTRUCTION_WANDB_RUN_NAME=pairwise_channel_masking_topas_$(Cluster) RECONSTRUCTION_CHECKPOINT_DIR=artifacts/pairwise_full_topas/checkpoints/$(Cluster) RECONSTRUCTION_REMOTE_CHECKPOINT_DIR=root://ceph-node-j.etp.kit.edu//dwong/training_runs/pairwise_topas_$(Cluster) RECONSTRUCTION_LOCAL_CACHE_PATH=cache/pairwise_full_topas_$(Cluster) RECONSTRUCTION_NUM_EPOCHS=20 RECONSTRUCTION_EVAL_STEP_PERIOD=250 RECONSTRUCTION_EVAL_NUM_BATCHES=32 RECONSTRUCTION_SAVE_CHECKPOINT_PERIOD=1000 RECONSTRUCTION_TOTAL_BATCH_SIZE=64 RECONSTRUCTION_DEVICE_BATCH_SIZE=8 RECONSTRUCTION_NUM_WORKERS=8 RECONSTRUCTION_MAX_OPEN_H5_FILES=32 RECONSTRUCTION_EXPECTED_H5_EVENTS_PER_FILE=100 RECONSTRUCTION_ENERGIES=10,20,50,100,200,500 RECONSTRUCTION_AMP_DTYPE=auto RECONSTRUCTION_SEED=42 RECONSTRUCTION_DISABLE_TORCH_COMPILE=1 TORCHDYNAMO_DISABLE=1"
+
+Queue
