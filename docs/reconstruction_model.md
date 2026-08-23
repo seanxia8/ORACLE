@@ -1,36 +1,46 @@
 # DELight Transformer Reconstruction
 
-This directory contains the files needed to train the DELight transformer
-reconstruction model. It intentionally does not include the large training data.
+This document describes the `src/reconstruction_model/` package in THIS
+repository (ORACLE): the DELight transformer reconstruction model and its
+architecture catalog. The large training data is intentionally not included.
+
+> **Provenance note (audit C20).** An earlier revision of this file was carried
+> over verbatim from the upstream standalone repository and described a
+> different layout — including the claim that `src/reconstruction_model/` "has
+> been removed", which is false here: it is the live package that
+> `src/tidmad/` imports its backbone, optimisers, schedulers, and checkpoint
+> helpers from. Path statements below have been corrected to this repository.
 
 ## Repository Status
 
-The active project root is this directory. The current Python package is:
+The active Python package in this repository is:
 
 ```text
-reconstruction_model/
+src/reconstruction_model/
 ```
 
 Use that package for training, inference, checkpoint loading, and model
-selection. The legacy/model-catalog architectures have been merged into:
+selection. The model-catalog architectures live in:
 
 ```text
-reconstruction_model/models/
+src/reconstruction_model/models/
 ```
 
-The directories under `src/` are reference material and old helper scripts, not
-the active import path. In particular:
-
-- `reconstruction_model/` is the active training package.
-- `reconstruction_model/models/` is the active architecture catalog.
-- `reconstruction_model/legacy/` preserves useful old evaluation,
-  visualisation, normalization, and XGBoost scripts that still need adaptation
-  before they are treated as production code.
-- `src/finetuning_references/` keeps a small selected set of Transformer
-  training/fine-tuning notebooks moved from the old Bilibili reference tree.
-- `src/reconstruction_model/`, `src/reconstruction_models/`, and
-  `modern_genai_bilibili-main/` have been removed after their useful content was
-  migrated.
+- `src/reconstruction_model/` is the active package. `src/tidmad/` imports
+  `reconstruction_model.model`, `reconstruction_model.muon`,
+  `reconstruction_model.schedulers`, and `reconstruction_model.checkpoints`
+  from it.
+- `src/reconstruction_model/models/` is the active architecture catalog.
+  Known duplication (audit C23): `models/current_compact.py` is a 6-line fork
+  of `../model.py` (import-path difference only) and both `muon.py` copies must
+  stay in sync; several registry entries reference model modules not present in
+  this repository and will `ImportError` if selected. Consolidation is tracked
+  in `docs/OPEN_DECISIONS.md`.
+- `src/reconstruction_model/legacy/` preserves old evaluation, visualisation,
+  normalization, and XGBoost scripts that still need adaptation before they are
+  treated as production code.
+- `reference/finetuning/` keeps a small selected set of Transformer
+  training/fine-tuning notebooks.
 - Generated outputs such as `artifacts/`, `cache/`, `results/`, logs, and local
   checkpoints should stay out of Git unless a small file is intentionally kept
   as documentation.

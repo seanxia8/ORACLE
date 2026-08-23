@@ -105,11 +105,19 @@ def test_chronological_split_leaves_a_guard_gap():
     assert min(p for _, p in val) > max(p for _, p in fit)
 
 
-def test_chi2_of_arm_optimises_the_chi2_objective():
-    """The secondary arm differs by feature injection, not by objective."""
+def test_unknown_loss_fails_loudly():
+    """Only implemented objectives are accepted; no silent aliases (audit B3).
+
+    ``chi2_of`` used to alias to ``chi2`` silently, so its "arm" was a
+    bit-identical duplicate of the chi2 arm. It must now raise until the
+    optimal-filter forward pass actually exists.
+    """
     assert objective_key(_tiny_run(loss="mse")) == "mse"
     assert objective_key(_tiny_run(loss="chi2")) == "chi2"
-    assert objective_key(_tiny_run(loss="chi2_of")) == "chi2"
+    import pytest
+
+    with pytest.raises(ValueError, match="unknown loss"):
+        objective_key(_tiny_run(loss="chi2_of"))
 
 
 def test_grad_clip_is_configurable_and_on_by_default():

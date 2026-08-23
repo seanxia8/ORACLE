@@ -10,28 +10,51 @@ from tidmad._vendor.splits import chronological_window_split, leakage_audit
 
 
 def _coloured_noise_windows(cfg: TidmadSTFTConfig, n_windows: int, seed: int) -> list[np.ndarray]:
-    """Windows with a 1/f-ish power profile (normalized so std ~ 1)."""
+    """Independent windows with a shared 1/f-ish power profile.
+
+    Each window is an INDEPENDENT realisation (audit N4/C22: the previous
+    version drew ``x`` once and returned the identical array ``n_windows``
+    times, which made the calibration and validation splits the same waveform
+    and the whitening check self-fulfilling).
+    """
     rng = np.random.default_rng(seed)
     n = cfg.win_length
     freqs = np.fft.rfftfreq(n, d=1.0 / cfg.sampling_frequency_hz)
     f = np.maximum(freqs[1:-1], freqs[1])  # exclude DC and Nyquist
     colour = (f[0] / f)  # 1/f, normalized at the first interior bin
-    spec = (rng.standard_normal(f.size) + 1j * rng.standard_normal(f.size)) * np.sqrt(colour)
-    x = np.fft.irfft(spec, n=n)
-    return [x / x.std() for _ in range(n_windows)]
+    windows = []
+    for _ in range(n_windows):
+        spec = (rng.standard_normal(f.size) + 1j * rng.standard_normal(f.size)) * np.sqrt(colour)
+        x = np.fft.irfft(spec, n=n)
+        windows.append(x / x.std())
+    return windows
 
 
 def test_psd_positive_and_whitening_identity():
+    """J estimated on one half of independent draws must whiten the other half.
+
+    The threshold reflects real estimator statistics: each band's median-of-256
+    periodograms has ~1.44/sqrt(256) = 9% relative sd; the check divides two
+    independent medians and takes a MAX over 327 bands, so the null max
+    deviation sits near 3.3 sigma * sqrt(2) * 9% ~ 0.42. 0.6 passes a correct
+    J with margin and still fails a mis-estimated J (a wrong colour slope
+    produces O(1)-to-O(100) deviations, see the non-flatness test below).
+    """
     cfg = FROZEN.stft
-    windows = _coloured_noise_windows(cfg, 64, seed=11)
-    cal, val = windows[:32], windows[32:]
+    windows = _coloured_noise_windows(cfg, 512, seed=11)
+    cal, val = windows[:256], windows[256:]
     j_band, estimate = estimate_band_psd(
         cal, cfg, sampling_frequency=cfg.sampling_frequency_hz, window="boxcar", average="median"
     )
     assert j_band.shape == (cfg.n_bands_used,)
     assert np.all(j_band > 0)
     err = whitening_identity_error(val, j_band, cfg)
-    assert err < 0.25, f"whitening identity error {err:.3f}"
+    assert err < 0.6, f"whitening identity error {err:.3f}"
+    # A deliberately wrong (flat) J must fail by a wide margin: this pins the
+    # check's sensitivity, which the old self-fulfilling test never exercised.
+    flat = np.full_like(j_band, float(np.median(j_band)))
+    err_flat = whitening_identity_error(val, flat, cfg)
+    assert err_flat > 2.0, f"flat J should not whiten 1/f noise (err {err_flat:.3f})"
 
 
 def test_psd_matches_noise_power_profile():

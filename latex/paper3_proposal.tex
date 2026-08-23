@@ -187,30 +187,55 @@ the high-alarm/low-consequence rate.} \\
 \vspace{-0.3em}
 \end{center}
 
-The waveform testbed decides this, because the generator supplies both the
-assumed $\hat\Sigma$ used by the encoder and the realized $\Sigma$, permitting a
-controlled test of whether alarms correspond to degradation in the correct
-likelihood-weighted residual. C4 is primary there and secondary on the
-point-cloud testbed, where consequence is downstream reconstruction error and
-no exact covariance exists. We state that asymmetry rather than implying
-symmetric coverage.
+The \emph{controlled simulator} decides this, because the generator supplies
+both the assumed $\hat\Sigma$ used by the encoder and the realized $\Sigma$,
+permitting a controlled test of whether alarms correspond to degradation in the
+correct likelihood-weighted residual. The public TIDMAD score is a development
+consequence only: its authors state it lacks direct relevance to fundamental
+science, so the TIDMAD arm's confirmatory consequence is a relative
+exclusion-limit comparison on a frozen science-file subset. C4 is primary on
+the waveform track and secondary on the point-cloud testbed, where consequence
+is downstream reconstruction error and no exact covariance exists. We state
+that asymmetry rather than implying symmetric coverage.
+
+\textbf{Dissociation design.} Because alarm magnitude and consequence are both
+monotone in intervention severity, a pooled alarm--consequence correlation is
+mechanically positive and evidentially empty. C4 is therefore evaluated within
+severity strata, and the design includes two perturbation families that
+decouple the quantities by construction: an \emph{output-null} arm (latent
+displacement along the local output Jacobian's null space; large alarm,
+$\approx$\,zero consequence) and a norm-matched \emph{output-aligned} arm
+(same displacement magnitude along the leading right-singular directions;
+large consequence). A monitor that ranks by unweighted Euclidean displacement
+fails this pair by construction; a Jacobian- and $\Sigma^{-1}$-aware alarm
+passes. This converts C4 from a correlation into a designed test with a
+predicted sign and gives every magnitude-only baseline a failure mode it
+cannot escape.
 
 \section{Testbeds and monitoring design}
 
 \textbf{Neutrino-telescope point clouds (realism).} One primary public
-configuration with a released checkpoint exposing a 128-dimensional pre-head
-event representation. Module dropout, hit thinning, and time jitter instantiate
-N; S windows use clean low-density strata in energy, topology,
-vertex/containment, and multiplicity, estimated from training data only. One
-secondary architecture serves as a consistency check. A paired
-detector-geometry contrast is the first joint pilot because both views can share
-the same latent event and only physically supported acquisition changes; the
-arm remains gated on successful event pairing and matching.
+configuration with a released checkpoint. The layerwise arm hooks all four
+DynEdge convolution blocks plus the post-processing and readout stages, not
+only the 128-dimensional pre-head event representation. Module dropout, hit
+thinning, and time jitter instantiate N; S windows use clean low-density strata
+in energy, topology, vertex/containment, and multiplicity, estimated from
+training data only --- with the caveat that module loss \emph{lowers} observed
+multiplicity, so every N cell is matched by an S cell of clean events at the
+same observed multiplicity, charge, and time spread; otherwise attribution
+reduces to recognizing the corruption operator's fingerprint. One secondary
+architecture serves as a consistency check. The released NuBench datasets are
+independent per-geometry productions and share no latent events, so the paired
+detector-geometry contrast is constructed by re-simulation:
+Prometheus~\cite{prometheus} supports re-using one seeded injection across
+detector geometries, and the six NuBench geometry files ship with it. Until that paired set exists, the released
+Hexagon water/ice pair supports only a distribution-level medium comparison,
+and is labelled as such.
 
 \textbf{Waveforms (mechanism; parallel track).} The synthetic arm uses a
 noise-aware linear control and a generator that constructs PSD/cross-spectral
 density models, samples seeded frequency-domain coefficients with real-signal
-symmetry, and adds declared artifacts. The public TIDMAD arm uses a
+symmetry, and adds declared artifacts. The public TIDMAD~\cite{tidmad} arm uses a
 $\sim0.6$M-parameter two-stage domain transformer and the release's denoising
 score, comparing otherwise identical MSE and inverse-PSD-weighted objectives.
 This compact transformer is a diagnostic subject, not a foundation model; a
@@ -288,9 +313,12 @@ off-diagonal rates \\
 \begin{tcolorbox}[colback=black!3,colframe=black!35,boxrule=0.4pt,
   left=4pt,right=4pt,top=3pt,bottom=3pt,arc=1pt]
 \footnotesize
-\textbf{Phase 1 (B): paired detector geometry.} Run the first joint pilot on
-common latent events under one declared acquisition intervention. Without the
-pairing gate, report only a consistency comparison, not a causal layout claim.
+\textbf{Phase 1 (B): paired detector geometry.} Generate common latent events
+by Prometheus re-simulation (one seeded injection, two geometries at a common
+site/depth) under one declared acquisition intervention; the released NuBench
+sets are not event-paired, so the interim released-data contrast (Hexagon
+water vs.\ ice) is reported only as a distribution-level consistency
+comparison, never a causal layout claim.
 
 \textbf{Phase 2 (A): SPINE/Graph-SPICE transfer.} On one frozen checkpoint,
 test one physically justified perturbation and one point-representation metric
@@ -311,6 +339,25 @@ representation attributes a declared failure, abstains outside scope, and
 links an alarm to consequence. Propagated uncertainty is therefore a candidate
 covariate, not the endpoint.
 
+\textbf{Relation to shift monitoring and localization.} The components of this
+study are individually established, and we claim the physics instantiation and
+the evaluation protocol, not the components. Shift-type identification from a
+frozen encoder exists in medical imaging~\cite{roschewitz2024}, building on
+the acquisition-versus-population taxonomy of~\cite{castro2020}; harmful-%
+versus-benign shift detection is a named research line~\cite{podkopaev2022,
+rabanser2019}, and performance changes have been attributed to specific shift
+mechanisms~\cite{zhang2023}. That shift type determines \emph{which layers} to
+adapt is the headline of surgical fine-tuning~\cite{lee2023surgical}, and
+localization-then-edit validation is known to be a weak inference~%
+\cite{hase2023}, which is why any later repair experiment here is preceded by
+an activation-patching causal check rather than resting on adaptation gains.
+What none of these supply, and what this study tests, is (i) a consequence
+variable that is a physics observable under a known measurement covariance
+rather than classification accuracy, (ii) the conditional-on-alarm
+alarm--consequence endpoint of Table~\ref{tab:c4} with designed
+alarm/consequence dissociations, and (iii) any monitoring result at all for
+learned neutrino-telescope reconstruction.
+
 \section{Collaboration}
 
 The agreed sequence is B$\rightarrow$A$\rightarrow$A$\oplus$B, while the
@@ -328,16 +375,25 @@ representation endpoint, and one downstream physics endpoint.
 Dataset access, checkpoint loading, released-prediction rescoring,
 intermediate-hook extraction, and a monotone module-dropout positive control
 have been validated ($15.28^\circ\!\to\!25.12^\circ$ median angular error and
-10-NN retention $1.000\!\to\!0.393$ across $0$--$50\%$ dropout). Exact
-re-inference parity remains unresolved: the current pipeline differs from the
-released directions by $0.944^\circ$ median angular error. Exact identity is a
-software control, separate from the scientific geometry gate. On a fixed
-development subset we will test whether that offset is stable across severity
-and event strata. Stable offsets permit a predeclared backend tolerance for the
-paired contrast; severity-dependent drift is a confound and keeps the gate
-closed.
+10-NN retention $1.000\!\to\!0.393$ across $0$--$50\%$ dropout), with the
+caveat that the pilot sample was enriched and non-randomly drawn; the audited
+scripts redraw it uniformly with nested severities and paired intervals.
+Exact re-inference parity remains unresolved: the current pipeline differs
+from the released directions by $0.944^\circ$ median angular error. Two
+identified confounds are resolved first: the released-metric rescoring had
+grouped by the track/cascade topology flag while Table~6 categories are
+interaction classes, and the pilot substitutes five preprocessing methods of
+the released detector, which is itself a candidate cause and is now disclosed
+with the outputs. The decisive next test is cheap: identical re-inference on
+CPU and GPU separates a $k$-NN backend cause (CPU$\neq$GPU) from
+preprocessing, alignment, or version skew (CPU$=$GPU$\neq$release). Exact
+identity is a software control, separate from the scientific geometry gate. On
+a fixed development subset we will test whether the residual offset is stable
+across severity and event strata. Stable offsets permit a predeclared backend
+tolerance for the paired contrast; severity-dependent drift is a confound and
+keeps the gate closed.
 
-\begin{thebibliography}{7}
+\begin{thebibliography}{99}
 \scriptsize
 \setlength{\itemsep}{-1.6pt}\setlength{\parsep}{0pt}
 \bibitem{nubench} R.~F. \O rs\o e et al. ``NuBench: An Open Benchmark for Deep
@@ -362,6 +418,37 @@ for Deep Neural Networks.'' NeurIPS (2017).
 Two-Sample Tests.'' ICLR (2017).
 \bibitem{guo2017} C. Guo et al. ``On Calibration of Modern Neural Networks.''
 ICML (2017).
+\bibitem{roschewitz2024} M. Roschewitz, R. Mehta, C. Jones, B. Glocker.
+``Automatic Dataset Shift Identification to Support Safe Deployment of Medical
+Imaging AI.'' MICCAI (2025).
+\href{https://arxiv.org/abs/2411.07940}{arXiv:2411.07940}.
+\bibitem{castro2020} D.~C. Castro, I. Walker, B. Glocker. ``Causality Matters
+in Medical Imaging.'' Nature Communications 11, 3673 (2020).
+\bibitem{podkopaev2022} A. Podkopaev, A. Ramdas. ``Tracking the Risk of a
+Deployed Model and Detecting Harmful Distribution Shifts.'' ICLR (2022).
+\href{https://arxiv.org/abs/2110.06177}{arXiv:2110.06177}.
+\bibitem{rabanser2019} S. Rabanser, S. G\"unnemann, Z. Lipton. ``Failing
+Loudly: An Empirical Study of Methods for Detecting Dataset Shift.'' NeurIPS
+(2019).
+\bibitem{zhang2023} H. Zhang, H. Singh, M. Ghassemi, S. Joshi. ```Why Did the
+Model Fail?': Attributing Model Performance Changes to Distribution Shifts.''
+ICML (2023). \href{https://arxiv.org/abs/2210.10769}{arXiv:2210.10769}.
+\bibitem{lee2023surgical} Y. Lee, A.~S. Chen, F. Tajwar, A. Kumar, H. Yao,
+P. Liang, C. Finn. ``Surgical Fine-Tuning Improves Adaptation to Distribution
+Shifts.'' ICLR (2023).
+\href{https://arxiv.org/abs/2210.11466}{arXiv:2210.11466}.
+\bibitem{hase2023} P. Hase, M. Bansal, B. Kim, A. Ghandeharioun. ``Does
+Localization Inform Editing? Surprising Differences in Causality-Based
+Localization vs.\ Knowledge Editing in Language Models.'' NeurIPS (2023).
+\href{https://arxiv.org/abs/2301.04213}{arXiv:2301.04213}.
+\bibitem{prometheus} J. Lazar, S. Meighen-Berger, C. Haack, D. Kim,
+S. Giner, C.~A. Arg\"uelles. ``Prometheus: An Open-Source Neutrino Telescope
+Simulation.'' Comput.\ Phys.\ Commun.\ (2024).
+\href{https://arxiv.org/abs/2304.14526}{arXiv:2304.14526}.
+\bibitem{tidmad} J. Fry, X. Fu, Z. Fu, K. Pappas, L. Winslow, A. Li.
+``TIDMAD: Time-Series Dataset for Discovering Dark Matter with AI Denoising.''
+NeurIPS Datasets \& Benchmarks (2025).
+\href{https://arxiv.org/abs/2406.04378}{arXiv:2406.04378}.
 \end{thebibliography}
 
 \end{document}

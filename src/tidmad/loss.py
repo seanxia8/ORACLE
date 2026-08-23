@@ -16,9 +16,14 @@ two arms would optimise the same objective. Therefore:
    ``loss_mse = resid.pow(2).mean()`` and
    ``loss_chi2 = (resid.pow(2) / J).mean()`` with ``J`` the per-band noise PSD.
 
-``J`` is the Paper 1 Phase-4 PSD (boxcar, median, 512 calibration windows)
-evaluated at the STFT band centres; a global periodogram normalization constant
-is immaterial to the contrast and is absorbed into the loss/lr scale.
+``J`` is the median-averaged per-band power of noise-only calibration windows
+measured through the data pipeline's own (Hann) STFT, so the whitened residual
+is weighted in the loss's coordinate system. It is floored at source
+(``psd.estimate_band_psd``) so no band divides by a near-zero power. The
+archived Welch density (boxcar, median — Paper 1 Phase-4 methodology) is
+recorded alongside for provenance but does not enter the loss; see the note in
+``config.TidmadDataConfig``. A global periodogram normalization constant is
+immaterial to the contrast and is absorbed into the loss/lr scale.
 """
 
 from __future__ import annotations
@@ -27,9 +32,10 @@ import torch
 from torch import Tensor
 
 
-def per_row_stats(x: Tensor, eps: float = 1e-6) -> tuple[Tensor, Tensor]:
+def per_row_stats(x: Tensor) -> tuple[Tensor, Tensor]:
     """Mean and standard deviation over the last axis, matching
-    ``tidmad.backbone.model.normalise_input_sequence`` exactly."""
+    ``normalise_input_sequence`` exactly (raw stats; the ``+ eps`` floor is
+    applied in ``unstandardise``, mirroring the model's denominator)."""
     x_mean = torch.nanmean(x, dim=-1, keepdim=True)
     x_std = torch.std(x, dim=-1, keepdim=True)
     return x_mean, x_std
@@ -63,7 +69,7 @@ def reconstruction_losses(
         ``(C,)`` positive per-band noise power (``J(f)`` at each band centre,
         tiled over the real/imaginary stacking).
     """
-    mean_in, std_in = per_row_stats(input_meas, eps=eps)
+    mean_in, std_in = per_row_stats(input_meas)
     out_meas = unstandardise(out_std, mean_in, std_in, eps=eps)
     resid = out_meas - target_meas
     j = j_per_band.to(resid.dtype).reshape(1, -1, 1)

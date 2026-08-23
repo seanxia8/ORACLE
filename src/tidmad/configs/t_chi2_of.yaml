@@ -1,6 +1,0 @@
-# T-chi2+OF arm (PLAN_04 §3.2, PLAN_03 §3.2): the chi2 objective with the
-# per-band/frame optimal-filter amplitude and its chi2 injected into the forward
-# pass. Secondary, attributed to prior work. Differs from t_chi2.yaml only in
-# train.loss; the OF-injection forward pass is a separate implementation step.
-train:
-  loss: "chi2_of"

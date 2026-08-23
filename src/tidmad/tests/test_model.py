@@ -137,3 +137,26 @@ def test_frozen_temporal_axis_has_24_positions():
     assert FROZEN.frames_per_window == 96
     assert FROZEN.model.patch_len == 4
     assert FROZEN.frames_per_window // FROZEN.model.patch_len == 24
+
+
+def test_pooled_representation_shape_and_grad():
+    """T2.1's third diagnostic anchor: pooled event representation (B, d)."""
+    run = _small_cfg()
+    torch_cfg = TransformerConfig(
+        max_seq_len=run.frames_per_window,
+        patch_len=run.model.patch_len,
+        patch_stride=run.model.patch_len,
+        d_model=run.model.d_model,
+        d_ff=run.model.d_ff,
+        n_head=run.model.n_head,
+        n_time_layers=run.model.n_time_layers,
+        n_channel_layers=run.model.n_channel_layers,
+    )
+    tid = TidmadTransformer(torch_cfg, n_bands=run.stft.n_bands_used)
+    tid.init_weights()
+    x = torch.randn(2, run.stft.n_bands_stacked, run.frames_per_window, requires_grad=True)
+    pooled = tid.pooled_representation(x)
+    assert pooled.shape == (2, run.model.d_model)
+    # Diagnostics need Jacobian access through the pooled representation.
+    pooled.sum().backward()
+    assert x.grad is not None

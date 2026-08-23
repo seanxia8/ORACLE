@@ -30,11 +30,19 @@ def estimate_band_psd(
     """Estimate the per-band noise PSD for the chi2 objective.
 
     ``j_band`` is the median-averaged periodogram power of the noise-only
-    windows **in the data pipeline's own STFT units** (so the whitened residual
-    ``|resid|^2 / J`` is measured in the loss's coordinate system). This is the
-    same estimator methodology as Paper 1's Phase-4 median-periodogram PSD; the
-    boxcar PSD density is also computed and returned as ``estimate`` for the
-    archived record and the ``χ²/dof`` comparison.
+    windows **in the data pipeline's own STFT units** — i.e. computed through
+    ``data.stft`` with the pipeline's Hann window and no detrending — so the
+    whitened residual ``|resid|^2 / J`` is measured in the loss's coordinate
+    system. The ``window``/``average`` arguments do NOT affect ``j_band``; they
+    parameterize only the separately-returned ``estimate``, a Welch PSD
+    *density* in physical units (Paper 1 Phase-4 methodology: boxcar, median)
+    kept for the archived record and the ``χ²/dof`` comparison. The two
+    estimators are intentionally distinct (audit M4/C7): one lives in loss
+    coordinates, the other in physical density units.
+
+    ``j_band`` is floored at ``max(median(j) * 1e-8, tiny)`` (the vendored
+    ``regularize_psd`` convention) so no band — the near-degenerate DC band in
+    particular — can inject an unbounded chi2 weight (audit C8).
     """
     from ._vendor.psd import welch_psd_from_windows
     from .data import stft
@@ -54,6 +62,10 @@ def estimate_band_psd(
         )
     if not np.all(j_band > 0):
         raise ValueError("J(f) must be strictly positive")
+    # Floor near-zero bands (vendored regularize_psd convention) so the chi2
+    # weight 1/J is bounded everywhere, including the degenerate DC band.
+    floor = max(float(np.median(j_band)) * 1e-8, np.finfo(float).tiny)
+    j_band = np.clip(j_band, floor, None)
 
     estimate = welch_psd_from_windows(
         windows,

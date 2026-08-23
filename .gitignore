@@ -51,3 +51,6 @@ docker_stderror
 
 # OS
 .DS_Store
+
+# Files staged for deletion (agent cannot rm on the mounted volume)
+_to_delete/

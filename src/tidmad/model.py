@@ -135,6 +135,22 @@ class TidmadTransformer(Transformer):
         x = self.final_proj_norm(x)
         return x.view(batch_size, -1, channel_dim, self.config.d_model)
 
+    def pooled_representation(self, x: torch.Tensor) -> torch.Tensor:
+        """Pooled event representation ``(B, d_model)`` — the third diagnostic
+        stage boundary (plan T2.1) alongside ``_temporal_stage`` and
+        ``_band_stage``.
+
+        Mean over the patch and band token axes of the band-stage output,
+        mirroring the base backbone's ``x.mean(dim=(1, 2))`` pooling that this
+        subclass otherwise removes. Not used by the reconstruction ``forward``;
+        it exists so representation diagnostics have a defined pooled endpoint
+        instead of each caller inventing its own.
+        """
+        batch_size = x.size(0)
+        t = self._temporal_stage(x)
+        b = self._band_stage(t, batch_size, self.n_bands)
+        return b.mean(dim=(1, 2))
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         batch_size, stacked_dim, _ = x.size()
         if stacked_dim != 2 * self.n_bands:

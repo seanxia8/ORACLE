@@ -84,8 +84,12 @@ class TidmadModelConfig:
 @dataclass(frozen=True)
 class TidmadTrainConfig:
     num_steps: int = 25_000
+    # Effective batch: gradients are accumulated over ``device_batch_size``
+    # single-window forward passes per optimiser step (train.train_step). There
+    # is deliberately no DataLoader/worker pool; the former ``num_workers``
+    # field was declared but consumed by nothing and has been removed so the
+    # frozen config matches execution exactly.
     device_batch_size: int = 4
-    num_workers: int = 4
     adamw_lr: float = 1e-3
     adamw_betas: tuple[float, float] = (0.9, 0.999)
     adamw_weight_decay: float = 0.0
@@ -104,7 +108,10 @@ class TidmadTrainConfig:
 
 @dataclass(frozen=True)
 class TidmadDataConfig:
-    data_root: str = ""  # directory holding abra_training_*.h5 / abra_validation_*.h5
+    # The data directory comes from the ``--data-dir`` CLI argument and is
+    # archived into ``run_config.json`` as provenance; the former ``data_root``
+    # field was declared but consumed by nothing and has been removed so the
+    # frozen config matches execution exactly.
     contract_path: str = "docs/tidmad_data_contract.json"
     train_files: tuple[str, ...] = ()
     window_samples: int = 198_656  # ~19.9 ms at 10 MHz; M = (L-n_fft)//hop+1 = 96 frames (scientific choice, T2)
@@ -112,9 +119,22 @@ class TidmadDataConfig:
     guard_windows: int = 4
     n_calibration_windows: int = 512  # Paper 1 Phase 4 used 512
     calibration_window_samples: int = 4096  # Phase 4: dof 4095
+    # NOTE (audit M4/C7): ``psd_window`` and ``psd_average`` parameterize ONLY
+    # the archived Welch PSD *density* record (``estimate`` in
+    # ``psd.estimate_band_psd``). The ``j_band`` that weights the chi2 loss is
+    # deliberately the data pipeline's own Hann-window STFT periodogram
+    # (median-averaged), so the whitened residual |resid|^2/J is measured in the
+    # loss's coordinate system. These two estimators are intentionally distinct;
+    # see ``psd.estimate_band_psd``.
     psd_average: str = "median"
     psd_window: str = "boxcar"
     psd_source_glob: str = "abra_science_*.h5"  # noise-only science files for J(f)
+    # T1.6 whitening positive control. The whitening identity error is measured
+    # at every training start on held-out calibration windows and archived into
+    # ``run_config.json``. ``None`` = record only (development); set a number to
+    # enforce it as a hard gate. The value MUST be frozen from a measurement on
+    # the real release files before any confirmatory run (T1.6), not invented.
+    whitening_error_max: float | None = None
 
 
 @dataclass(frozen=True)

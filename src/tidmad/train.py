@@ -14,13 +14,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import random
+import shutil
 import signal
 import time
-import sys
 from pathlib import Path
 
-import numpy as np
 import torch
 
 from reconstruction_model.schedulers import cosine_scheduler_with_linear_warmup
@@ -38,11 +36,19 @@ except ImportError:  # pragma: no cover - optional
 
 
 def load_run_config(path: Path) -> TidmadRunConfig:
-    """Build a run config from a YAML arm file on top of the frozen defaults."""
-    payload = {}
-    if yaml is not None and Path(path).exists():
-        with open(path) as fh:
-            payload = yaml.safe_load(fh) or {}
+    """Build a run config from a YAML arm file on top of the frozen defaults.
+
+    Fails loudly on a missing file or missing PyYAML: the previous silent
+    fallback to ``FROZEN`` meant a typo'd ``--config`` path trained the default
+    (mse) arm while claiming to be whatever the filename said.
+    """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"arm config {path} does not exist")
+    if yaml is None:
+        raise ImportError("PyYAML is required to load arm configs")
+    with open(path) as fh:
+        payload = yaml.safe_load(fh) or {}
     return _apply_overrides(FROZEN, payload)
 
 
@@ -82,15 +88,36 @@ def _only_loss_differs(a: dict, b: dict) -> bool:
     return all(k == "loss" or a[k] == b[k] for k in set(a) | set(b))
 
 
-def write_run_config(run: TidmadRunConfig, out: Path, num_params: int) -> None:
-    """Write ``run_config.json`` in the ``save_resolved_config`` shape, plus loss."""
+def write_run_config(
+    run: TidmadRunConfig, out: Path, num_params: int, provenance: dict | None = None
+) -> None:
+    """Write ``run_config.json`` in the ``save_resolved_config`` shape, plus loss.
+
+    ``provenance`` records execution facts the frozen config cannot see (the
+    CLI data directory, any ``--steps`` override, window counts, the whitening
+    control). ``status`` starts as ``"started"`` and is finalised by
+    :func:`finalise_run_config` — a ``run_config.json`` still reading
+    ``"started"`` marks an interrupted or crashed run (audit C6).
+    """
     Path(out).mkdir(parents=True, exist_ok=True)
     payload = {
         "model_variant": "tidmad_stft",
         "run_config": run.as_dict(),
         "num_trainable_params": num_params,
+        "provenance": provenance or {},
+        "status": "started",
+        "completed_steps": None,
     }
     (out / "run_config.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
+def finalise_run_config(out: Path, completed_steps: int, interrupted: bool) -> None:
+    """Record the realised step count so the archive matches execution (C6)."""
+    path = Path(out) / "run_config.json"
+    payload = json.loads(path.read_text())
+    payload["completed_steps"] = int(completed_steps)
+    payload["status"] = "interrupted" if interrupted else "completed"
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
 def build_model(run: TidmadRunConfig) -> TidmadTransformer:
@@ -113,8 +140,19 @@ def build_model(run: TidmadRunConfig) -> TidmadTransformer:
 
 
 def objective_key(run: TidmadRunConfig) -> str:
-    """Which loss the arm optimises. ``chi2_of`` trains on the chi2 objective."""
-    return "chi2" if run.train.loss == "chi2_of" else run.train.loss
+    """Which loss the arm optimises. Only implemented objectives are accepted.
+
+    The former ``chi2_of`` alias silently trained the plain chi2 arm (audit
+    B3/C3); it is removed until the optimal-filter forward pass exists. An
+    unknown loss now fails loudly instead of impersonating another arm.
+    """
+    if run.train.loss not in ("mse", "chi2"):
+        raise ValueError(
+            f"unknown loss {run.train.loss!r}; implemented objectives: 'mse', 'chi2'. "
+            "('chi2_of' was removed as a silent alias — implement the OF forward "
+            "pass before reintroducing the config.)"
+        )
+    return run.train.loss
 
 
 def train_step(model, optimisers, schedulers, batch, run, j_stack, device):
@@ -198,7 +236,7 @@ def _checkpoint(out: Path, model, adamw, muon, schedulers, step: int, run: Tidma
     latest = out / "latest.pt"
     if latest.exists() or latest.is_symlink():
         latest.unlink()
-    torch.save(torch.load(path, map_location="cpu", weights_only=False), latest)
+    shutil.copyfile(path, latest)
     return path
 
 
@@ -215,8 +253,14 @@ def _restore(resume: Path, model, adamw, muon, schedulers, device) -> int:
     return step
 
 
-def _noise_only_windows(data_dir: Path, run: TidmadRunConfig):
-    """Stream ``n_calibration_windows`` windows of noise-only science data."""
+def _noise_only_windows(data_dir: Path, run: TidmadRunConfig, count: int | None = None):
+    """Stream windows of noise-only science data, in the training frame.
+
+    The ``+ sample_shift`` offset is applied so the calibration windows live in
+    the SAME coordinate frame as the training/eval spectrograms built by
+    ``data.read_channel_pair`` (audit M6/C9): J(f) must be estimated in the
+    frame it later divides.
+    """
     from ._vendor.loader import TidmadFile, load_contract
 
     contract = load_contract(run.data.contract_path)
@@ -225,13 +269,15 @@ def _noise_only_windows(data_dir: Path, run: TidmadRunConfig):
     if not science:
         raise FileNotFoundError(f"no science files matched {run.data.psd_source_glob!r} in {data_dir}")
     n = run.data.calibration_window_samples
+    total = int(count) if count is not None else run.data.n_calibration_windows
+    shift = float(run.stft.sample_shift)
     produced = 0
     for path in science:
         with TidmadFile(path, contract) as fh:
-            for win in fh.iter_squid_windows(n, stride=n, limit=run.data.n_calibration_windows - produced):
-                yield win
+            for win in fh.iter_squid_windows(n, stride=n, limit=total - produced):
+                yield win + shift
                 produced += 1
-                if produced >= run.data.n_calibration_windows:
+                if produced >= total:
                     return
 
 
@@ -313,9 +359,21 @@ def main() -> None:
     )
     parser.add_argument("--wandb", action="store_true", help="log to Weights & Biases")
     parser.add_argument("--wandb-project", default="rps-tidmad-rung4")
+    parser.add_argument(
+        "--paired-config",
+        type=Path,
+        default=None,
+        help="the OTHER arm's YAML; when given, assert_configs_differ_only_in_loss "
+        "runs at startup so the single-difference gate executes in production, "
+        "not only in the test suite (audit M3/C4)",
+    )
     args = parser.parse_args()
 
     run = load_run_config(args.config)
+    if args.paired_config is not None:
+        assert_configs_differ_only_in_loss(run, load_run_config(args.paired_config))
+        print(f"[tidmad.train] single-difference gate passed against {args.paired_config}")
+    objective_key(run)  # fail loudly on an unimplemented loss before any work
     if args.steps is not None:
         run = TidmadRunConfig(
             run.stft, run.model, run.train.__class__(**{**run.train.__dict__, "num_steps": args.steps}), run.data
@@ -323,15 +381,32 @@ def main() -> None:
     set_seed(run.train.seed)
     device = torch.device(args.device)
 
-    from .psd import estimate_band_psd, tile_for_stacked_bands
+    from .psd import estimate_band_psd, tile_for_stacked_bands, whitening_identity_error
 
+    # J(f) from the first n_calibration_windows; the NEXT n_calibration_windows
+    # are held out for the T1.6 whitening positive control, so the check is not
+    # scored on the windows that produced the estimate (audit N4/C22).
+    noise_windows = list(_noise_only_windows(args.data_dir, run, count=2 * run.data.n_calibration_windows))
+    cal_windows = noise_windows[: run.data.n_calibration_windows]
+    check_windows = noise_windows[run.data.n_calibration_windows :]
     j_band, _ = estimate_band_psd(
-        _noise_only_windows(args.data_dir, run),
+        cal_windows,
         run.stft,
         sampling_frequency=run.stft.sampling_frequency_hz,
         window=run.data.psd_window,
         average=run.data.psd_average,
     )
+    whitening_error = None
+    if check_windows:
+        whitening_error = whitening_identity_error(check_windows, j_band, run.stft)
+        print(f"[tidmad.train] whitening identity error (held-out): {whitening_error:.4f}")
+        if run.data.whitening_error_max is not None and whitening_error > run.data.whitening_error_max:
+            raise RuntimeError(
+                f"whitening identity error {whitening_error:.4f} exceeds the declared "
+                f"gate {run.data.whitening_error_max}; J(f) does not whiten the "
+                "calibration noise — the chi2 arm's weighting is not trustworthy."
+            )
+    del noise_windows, check_windows
     j_stack = torch.as_tensor(tile_for_stacked_bands(j_band, run.stft), dtype=torch.float32)
 
     model = build_model(run).to(device)
@@ -351,7 +426,6 @@ def main() -> None:
     ]
 
     n_params = sum(p.numel() for p in model.parameters())
-    write_run_config(run, args.out, n_params)
     print(f"[tidmad.train] arm loss={run.train.loss} model_params={n_params}")
 
     j_stack = j_stack.to(device)
@@ -368,13 +442,38 @@ def main() -> None:
     # ---- data splits ------------------------------------------------------
     positions = _window_positions(args.data_dir, run)
     fit_positions, val_positions = chronological_split(positions, run)
+    # Budget accounting (audit M2/C6): the fit stream cycles, so the declared
+    # budget is always *reachable*; what must be recorded is how many passes
+    # over the data it implies. Fail loudly only on an empty split.
+    windows_needed = run.train.num_steps * run.train.device_batch_size
+    effective_epochs = windows_needed / max(len(fit_positions), 1)
     print(
         f"[tidmad.train] windows: {len(positions)} total, "
         f"{len(fit_positions)} fit, {len(val_positions)} held out "
-        f"(guard {run.data.guard_windows})"
+        f"(guard {run.data.guard_windows}); declared budget = {windows_needed} "
+        f"window visits = {effective_epochs:.2f} passes over the fit split"
     )
     if not fit_positions:
         raise RuntimeError("no training windows after the chronological split")
+
+    write_run_config(
+        run,
+        args.out,
+        n_params,
+        provenance={
+            "data_dir": str(args.data_dir),
+            "config_file": str(args.config),
+            "paired_config": str(args.paired_config) if args.paired_config else None,
+            "cli_steps_override": args.steps,
+            "resume_from": str(resume) if resume else None,
+            "n_windows_total": len(positions),
+            "n_windows_fit": len(fit_positions),
+            "n_windows_val": len(val_positions),
+            "effective_epochs": effective_epochs,
+            "whitening_identity_error": whitening_error,
+            "whitening_error_max": run.data.whitening_error_max,
+        },
+    )
 
     # ---- clean stop on SIGTERM / SIGINT ------------------------------------
     # `timeout` sends SIGTERM. Without this a capped run dies with no
@@ -453,14 +552,19 @@ def main() -> None:
             final_path = _checkpoint(args.out, model, adamw, muon, schedulers, step, run)
 
     final_path = _checkpoint(args.out, model, adamw, muon, schedulers, step, run)
+    interrupted = stop["requested"] or step < run.train.num_steps
+    finalise_run_config(args.out, completed_steps=step, interrupted=interrupted)
     total = time.time() - started
     print(
         f"[tidmad.train] stopped at step {step}/{run.train.num_steps} "
         f"after {total/3600:.2f} h ({(step - start_step)/max(total, 1e-9):.2f} steps/s). "
         f"Final checkpoint: {final_path}"
     )
-    if stop["requested"]:
-        print("[tidmad.train] stop was requested; resume with --resume auto")
+    if interrupted:
+        print(
+            "[tidmad.train] run did NOT reach the declared budget; run_config.json "
+            "records status='interrupted'. Resume with --resume auto"
+        )
     if wb is not None:
         wb.finish()
 
