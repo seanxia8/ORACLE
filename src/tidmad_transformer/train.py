@@ -5,7 +5,7 @@ in the run config). Everything else — architecture, data, budget, seeds — is
 identical and asserted by :func:`assert_configs_differ_only_in_loss`.
 
 Reuses the backbone optimisers (Muon + AdamW) and the cosine-with-warmup
-schedulers from the vendored backbone in ``tidmad.backbone``. Checkpointing is
+schedulers from the vendored backbone in ``tidmad_transformer.backbone``. Checkpointing is
 local to this module because it must round-trip both optimisers, both
 schedulers and the step counter for ``--resume`` to be exact.
 """

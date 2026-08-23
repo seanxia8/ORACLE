@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from tidmad.config import FROZEN, TidmadRunConfig, TidmadTrainConfig
-from tidmad.train import assert_configs_differ_only_in_loss, load_run_config
+from tidmad_transformer.config import FROZEN, TidmadRunConfig, TidmadTrainConfig
+from tidmad_transformer.train import assert_configs_differ_only_in_loss, load_run_config
 
 
 def test_frozen_config_consistency():
@@ -30,8 +30,8 @@ def test_frozen_config_consistency():
 
 
 def test_arm_configs_differ_only_in_loss():
-    left = load_run_config(__import__("pathlib").Path("src/tidmad/configs/t_mse.yaml"))
-    right = load_run_config(__import__("pathlib").Path("src/tidmad/configs/t_chi2.yaml"))
+    left = load_run_config(__import__("pathlib").Path("src/tidmad_transformer/configs/t_mse.yaml"))
+    right = load_run_config(__import__("pathlib").Path("src/tidmad_transformer/configs/t_chi2.yaml"))
     assert left.train.loss == "mse"
     assert right.train.loss == "chi2"
     # This is the gate: fails loudly if anything else drifted.
@@ -43,7 +43,7 @@ def test_chi2_of_config_is_gone():
 
     Reintroduce it only together with an actual optimal-filter forward pass.
     """
-    assert not __import__("pathlib").Path("src/tidmad/configs/t_chi2_of.yaml").exists()
+    assert not __import__("pathlib").Path("src/tidmad_transformer/configs/t_chi2_of.yaml").exists()
 
 
 def test_config_equality_rejects_nonloss_drift():
@@ -60,9 +60,9 @@ def test_training_loop_smoke_two_steps():
     """The full model + optimiser + scheduler + loss path runs on a synthetic batch."""
     import torch
 
-    from tidmad.config import TidmadDataConfig, TidmadModelConfig, TidmadRunConfig, TidmadSTFTConfig, TidmadTrainConfig
-    from tidmad.loss import reconstruction_losses
-    from tidmad.train import build_model, train_step
+    from tidmad_transformer.config import TidmadDataConfig, TidmadModelConfig, TidmadRunConfig, TidmadSTFTConfig, TidmadTrainConfig
+    from tidmad_transformer.loss import reconstruction_losses
+    from tidmad_transformer.train import build_model, train_step
 
     stft = TidmadSTFTConfig(n_fft=64, hop_length=32, win_length=64, n_bands_used=4)
     model_cfg = TidmadModelConfig(d_model=16, d_ff=32, n_head=2, patch_len=4)

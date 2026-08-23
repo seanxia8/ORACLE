@@ -27,7 +27,7 @@ three positions (start, middle, end) and record:
 
 Usage
 -----
-    python -m tidmad.characterise_injections \\
+    python -m tidmad_transformer.characterise_injections \\
         --data-dir $TIDMAD_DATA_ROOT \\
         --glob 'abra_validation_*.h5' \\
         --out   injection_survey.json

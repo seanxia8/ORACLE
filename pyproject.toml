@@ -10,7 +10,7 @@ members = [
     "src/noise_module",
     "src/qp_simulator",
     "src/reconstruction_model",
-    "src/tidmad",
+    "src/tidmad_transformer",
 ]
 
 # CUDA training torch (Linux GPU nodes). This wheel has no macOS build, so

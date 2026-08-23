@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tidmad"
+name = "tidmad_transformer"
 dynamic = ["version"]
 description = "TIDMAD band-frame STFT denoising arm (backbone from reconstruction_model, vendored Paper-1 benchmark helpers)"
 requires-python = ">=3.10,<3.13"
@@ -20,13 +20,13 @@ test = ["pytest>=7.0"]
 wandb = ["wandb>=0.23.0"]
 
 [tool.setuptools]
-packages = ["tidmad", "tidmad._vendor"]
+packages = ["tidmad_transformer", "tidmad_transformer._vendor"]
 
 [tool.setuptools.package-dir]
-tidmad = "."
+tidmad_transformer = "."
 
 [tool.setuptools.dynamic]
-version = { attr = "tidmad.__version__" }
+version = { attr = "tidmad_transformer.__version__" }
 
 [tool.setuptools.package-data]
-tidmad = ["configs/*.yaml"]
+tidmad_transformer = ["configs/*.yaml"]

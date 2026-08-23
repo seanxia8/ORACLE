@@ -1,7 +1,7 @@
 """Per-band noise PSD ``J(f)`` for the chi2 objective (PLAN_04 §3.2).
 
 ``J(f)`` is the *same object the paper cites*: Paper 1's Phase-4 estimator
-(``tidmad._vendor.psd.welch_psd_from_windows``), median-averaged boxcar
+(``tidmad_transformer._vendor.psd.welch_psd_from_windows``), median-averaged boxcar
 periodograms over 512 calibration windows of 4096 samples, estimated from
 **noise-only science files** — never from evaluation data. The calibration
 window length equals ``n_fft`` (4096), so the PSD grid coincides with the STFT

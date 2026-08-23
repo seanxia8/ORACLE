@@ -32,10 +32,10 @@ MODEL_REGISTRY: dict[str, ModelEntry] = {
     ),
     "tidmad_stft": ModelEntry(
         name="tidmad_stft",
-        module="tidmad.model",
+        module="tidmad_transformer.model",
         model_class="TidmadTransformer",
         config_class="TransformerConfig",
-        source="tidmad package: current_compact backbone + reconstruction head (PLAN_04)",
+        source="tidmad_transformer package: current_compact backbone + reconstruction head (PLAN_04)",
         description="Band-frame reconstruction Transformer for the TIDMAD benchmark; reconstruction head instead of spatial/energy heads.",
         output_signature="reconstructed_spectrogram",
         requires_pairwise_cache=False,

@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 import torch
 
-from tidmad.config import (
+from tidmad_transformer.config import (
     FROZEN,
     TidmadDataConfig,
     TidmadModelConfig,
@@ -70,8 +70,8 @@ def test_infer_writes_valid_unsaturated_two_channel_file(synthetic_release, tmp_
     data_dir, contract_path, n_samples, squid = synthetic_release
     run = _tiny_run(str(contract_path))
 
-    from tidmad import infer as infer_mod
-    from tidmad.train import build_model
+    from tidmad_transformer import infer as infer_mod
+    from tidmad_transformer.train import build_model
 
     # Bypass checkpoint loading: an untrained model is enough to test the
     # writer's coordinate frame, dtype, tail and layout contracts.
@@ -114,7 +114,7 @@ def test_infer_writes_valid_unsaturated_two_channel_file(synthetic_release, tmp_
 
 
 def test_verify_denoised_file_rejects_saturation(tmp_path):
-    from tidmad.infer import _verify_denoised_file
+    from tidmad_transformer.infer import _verify_denoised_file
 
     path = tmp_path / "abra_validation_denoised_bad_0001.h5"
     n = 1 << 12

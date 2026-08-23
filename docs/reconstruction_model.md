@@ -8,7 +8,7 @@ architecture catalog. The large training data is intentionally not included.
 > over verbatim from the upstream standalone repository and described a
 > different layout — including the claim that `src/reconstruction_model/` "has
 > been removed", which is false here: it is the live package that
-> `src/tidmad/` imports its backbone, optimisers, schedulers, and checkpoint
+> `src/tidmad_transformer/` imports its backbone, optimisers, schedulers, and checkpoint
 > helpers from. Path statements below have been corrected to this repository.
 
 ## Repository Status
@@ -26,7 +26,7 @@ selection. The model-catalog architectures live in:
 src/reconstruction_model/models/
 ```
 
-- `src/reconstruction_model/` is the active package. `src/tidmad/` imports
+- `src/reconstruction_model/` is the active package. `src/tidmad_transformer/` imports
   `reconstruction_model.model`, `reconstruction_model.muon`,
   `reconstruction_model.schedulers`, and `reconstruction_model.checkpoints`
   from it.

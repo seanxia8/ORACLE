@@ -9,9 +9,9 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from tidmad.config import TidmadDataConfig, TidmadRunConfig, TidmadSTFTConfig, TidmadModelConfig, TidmadTrainConfig
-from tidmad.data import series_to_spectrogram, spectrogram_to_series, stft, istft
-from tidmad.model import TidmadTransformer
+from tidmad_transformer.config import TidmadDataConfig, TidmadRunConfig, TidmadSTFTConfig, TidmadModelConfig, TidmadTrainConfig
+from tidmad_transformer.data import series_to_spectrogram, spectrogram_to_series, stft, istft
+from tidmad_transformer.model import TidmadTransformer
 from reconstruction_model.model import TransformerConfig
 
 
@@ -132,7 +132,7 @@ def test_temporal_stage_shape_with_complex_features():
 
 
 def test_frozen_temporal_axis_has_24_positions():
-    from tidmad.config import FROZEN
+    from tidmad_transformer.config import FROZEN
 
     assert FROZEN.frames_per_window == 96
     assert FROZEN.model.patch_len == 4

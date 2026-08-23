@@ -13,7 +13,7 @@ members = [
     "modular-noise-simulator",
     "oracle",
     "qp-simulator",
-    "tidmad",
+    "tidmad_transformer",
 ]
 
 [[package]]
@@ -1929,8 +1929,8 @@ wheels = [
 ]
 
 [[package]]
-name = "tidmad"
-source = { editable = "src/tidmad" }
+name = "tidmad_transformer"
+source = { editable = "src/tidmad_transformer" }
 dependencies = [
     { name = "h5py" },
     { name = "numpy" },

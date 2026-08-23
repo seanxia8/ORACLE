@@ -1,6 +1,6 @@
 """Score a TIDMAD arm through the *unmodified* upstream ``benchmark.py``.
 
-Reuses Paper 1's wrapper (``tidmad._vendor.score.run_upstream_benchmark``),
+Reuses Paper 1's wrapper (``tidmad_transformer._vendor.score.run_upstream_benchmark``),
 which shells out to the release's script and captures the raw output. There is
 deliberately no internal reimplementation of the score: a reimplementation that
 disagreed by a normalization factor would not be comparable to the published

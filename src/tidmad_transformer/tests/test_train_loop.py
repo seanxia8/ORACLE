@@ -15,14 +15,14 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from tidmad.config import (  # noqa: E402
+from tidmad_transformer.config import (  # noqa: E402
     TidmadDataConfig,
     TidmadModelConfig,
     TidmadRunConfig,
     TidmadSTFTConfig,
     TidmadTrainConfig,
 )
-from tidmad.train import (  # noqa: E402
+from tidmad_transformer.train import (  # noqa: E402
     _checkpoint,
     _restore,
     build_model,

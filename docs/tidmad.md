@@ -46,7 +46,7 @@ The vendored helpers came from
 From the repository root:
 
 ```bash
-uv run pytest src/tidmad/tests -q
+uv run pytest src/tidmad_transformer/tests -q
 ```
 
 The tests use small synthetic HDF5 files and cover batching, train/validation
@@ -83,21 +83,21 @@ environment). The 20-step command is a plumbing smoke only. Training writes
 `checkpoint_<step>.pt` files plus a `latest.pt` copy into `--out`:
 
 ```bash
-uv run python -m tidmad.train \
-  --config src/tidmad/configs/t_mse.yaml \
-  --paired-config src/tidmad/configs/t_chi2.yaml \
+uv run python -m tidmad_transformer.train \
+  --config src/tidmad_transformer/configs/t_mse.yaml \
+  --paired-config src/tidmad_transformer/configs/t_chi2.yaml \
   --data-dir /external/tidmad \
   --out /external/paper3-runs/tidmad-mse-smoke \
   --steps 20
 
-uv run python -m tidmad.infer \
-  --config src/tidmad/configs/t_mse.yaml \
+uv run python -m tidmad_transformer.infer \
+  --config src/tidmad_transformer/configs/t_mse.yaml \
   --checkpoint /external/paper3-runs/tidmad-mse-smoke/checkpoint_00000020.pt \
   --data-dir /external/tidmad \
   --out /external/tidmad \
   --model-tag paper3_mse_smoke
 
-uv run python -m tidmad.score \
+uv run python -m tidmad_transformer.score \
   --upstream /path/to/TIDMAD \
   --data-dir /external/tidmad \
   --model-tag paper3_mse_smoke \
@@ -105,7 +105,7 @@ uv run python -m tidmad.score \
 ```
 
 For a resumed run, pass `latest.pt` (or a specific `checkpoint_<step>.pt`) to
-`tidmad.train --resume`, or `--resume auto`. Do not read the confirmatory score
+`tidmad_transformer.train --resume`, or `--resume auto`. Do not read the confirmatory score
 until the scientific tolerance (kappa_m) and the whitening positive-control
 threshold (`whitening_error_max`) have been frozen; note that the upstream
 denoising score is a development consequence metric only — the TIDMAD authors

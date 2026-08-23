@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import h5py
 import numpy as np
 
-from tidmad.data import read_channel_pair
+from tidmad_transformer.data import read_channel_pair
 
 
 def test_read_channel_pair_uses_full_contract_paths(tmp_path):

@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from tidmad.loss import reconstruction_losses
+from tidmad_transformer.loss import reconstruction_losses
 
 
 def _make_nonflat_j(bands: int, dynamic_range: float = 1e3) -> torch.Tensor:

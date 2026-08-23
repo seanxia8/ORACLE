@@ -71,7 +71,7 @@ this repository.
 | `src/noise_module/` | Validated stationary/nonstationary/multichannel noise and PSD simulation (numpy/scipy only) |
 | `src/qp_simulator/` | Minimal standalone quasi-particle (QP) trace simulator (numpy only) |
 | `src/reconstruction_model/` | DELight transformer reconstruction model + architecture catalog |
-| `src/tidmad/` | TIDMAD band-frame STFT denoising arm (backbone from `reconstruction_model`, vendored Paper-1 benchmark helpers) |
+| `src/tidmad_transformer/` | TIDMAD band-frame STFT denoising arm (backbone from `reconstruction_model`, vendored Paper-1 benchmark helpers) |
 | `notebooks/` | Smoke/inference notebooks and the noise-module tutorials |
 | `scripts/` | Local/Condor training helpers and smoke tests |
 | `containers/` | Runtime container image definition |
@@ -97,7 +97,7 @@ one lockfile:
 - `src/noise_module/` — `modular-noise-simulator` (numpy/scipy only)
 - `src/qp_simulator/` — `qp-simulator` (numpy only)
 - `src/reconstruction_model/` — `delight-reconstruction` (PyTorch CUDA build)
-- `src/tidmad/` — `tidmad` (PyTorch CUDA build, plus h5py/scipy/PyYAML)
+- `src/tidmad_transformer/` — `tidmad_transformer` (PyTorch CUDA build, plus h5py/scipy/PyYAML)
 
 Install everything with:
 
@@ -125,7 +125,7 @@ uv run pytest src/noise_module/tests
 ```
 
 The `tidmad` suite needs torch, and on a Linux GPU node `uv run pytest
-src/tidmad/tests` is enough. On macOS the cu124 pin blocks that, so give it its
+src/tidmad_transformer/tests` is enough. On macOS the cu124 pin blocks that, so give it its
 own CPU environment; `--no-deps` on the two workspace packages is what keeps the
 pin out of the way:
 
@@ -134,8 +134,8 @@ uv venv --python 3.12 .venv-cpu
 uv pip install --python .venv-cpu --no-config \
     torch numpy jaxtyping h5py scipy pyyaml pytest
 uv pip install --python .venv-cpu --no-config --no-deps \
-    -e src/reconstruction_model -e src/tidmad
-.venv-cpu/bin/python -m pytest src/tidmad/tests
+    -e src/reconstruction_model -e src/tidmad_transformer
+.venv-cpu/bin/python -m pytest src/tidmad_transformer/tests
 ```
 
 `--no-config` keeps `[tool.uv.sources]` in this file from redirecting torch back

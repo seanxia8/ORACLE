@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from tidmad.config import FROZEN, TidmadSTFTConfig
-from tidmad.psd import estimate_band_psd, tile_for_stacked_bands, whitening_identity_error
-from tidmad._vendor.splits import chronological_window_split, leakage_audit
+from tidmad_transformer.config import FROZEN, TidmadSTFTConfig
+from tidmad_transformer.psd import estimate_band_psd, tile_for_stacked_bands, whitening_identity_error
+from tidmad_transformer._vendor.splits import chronological_window_split, leakage_audit
 
 
 def _coloured_noise_windows(cfg: TidmadSTFTConfig, n_windows: int, seed: int) -> list[np.ndarray]:
