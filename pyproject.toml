@@ -13,9 +13,11 @@ members = [
     "src/tidmad",
 ]
 
-# CUDA training torch (Linux GPU nodes). Override with
-#   uv sync --override <(echo 'tool.uv.sources: { torch: [{ index = "pypi" }] }')
-# or drop the cu124 local tag when developing on macOS/CPU.
+# CUDA training torch (Linux GPU nodes). This wheel has no macOS build, so
+# `uv sync` cannot resolve reconstruction_model or tidmad on a Mac. For CPU/macOS
+# development use the separate `.venv-cpu` recipe in README.md ("Running the
+# tests") rather than an --override; the previously documented override was not
+# valid uv syntax and never worked.
 [[tool.uv.index]]
 name = "torch_cuda"
 url = "https://download.pytorch.org/whl/cu124"

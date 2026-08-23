@@ -106,19 +106,45 @@ uv sync
 ```
 
 `reconstruction_model` and `tidmad` pin `torch==2.5.1+cu124` (Linux GPU nodes).
-On macOS/CPU, override the index before syncing, or install just the noise
-package, which has no PyTorch dependency:
+**That wheel does not exist for macOS**, so a plain `uv sync` cannot resolve
+those two packages on a Mac. Either install just the noise package, which has no
+PyTorch dependency:
 
 ```bash
 uv sync --package modular-noise-simulator
 ```
 
-Run the test suites (the noise package passes without any external data):
+or build a separate CPU environment — see "Running the tests" below.
+
+### Running the tests
+
+The noise package needs nothing external and runs anywhere:
 
 ```bash
 uv run pytest src/noise_module/tests
-uv run pytest src/tidmad/tests      # 1 test needs external docs/tidmad_data_contract.json
 ```
+
+The `tidmad` suite needs torch, and on a Linux GPU node `uv run pytest
+src/tidmad/tests` is enough. On macOS the cu124 pin blocks that, so give it its
+own CPU environment; `--no-deps` on the two workspace packages is what keeps the
+pin out of the way:
+
+```bash
+uv venv --python 3.12 .venv-cpu
+uv pip install --python .venv-cpu --index-url https://pypi.org/simple \
+    torch numpy jaxtyping h5py scipy pyyaml pytest
+uv pip install --python .venv-cpu --no-deps -e src/reconstruction_model -e src/tidmad
+.venv-cpu/bin/python -m pytest src/tidmad/tests
+```
+
+One test is skipped without the external `docs/tidmad_data_contract.json`.
+`tests/conftest.py` already sets `RECONSTRUCTION_DISABLE_TORCH_COMPILE=1`,
+because Muon's Newton-Schulz `torch.compile` path needs a C++/OpenMP toolchain
+that macOS does not supply by default; the numerics are identical either way.
+
+Running `pytest` against a system Python instead will fail at collection with
+`ModuleNotFoundError: No module named 'torch'` — that is the environment, not
+the code.
 
 The noise-module tutorials live in
 [`notebooks/noise_module_tutorial.ipynb`](notebooks/noise_module_tutorial.ipynb) and

@@ -8,6 +8,7 @@ __pycache__/
 
 # uv / virtualenv
 .venv/
+.venv-cpu/
 build/
 dist/
 
