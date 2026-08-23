@@ -131,20 +131,38 @@ pin out of the way:
 
 ```bash
 uv venv --python 3.12 .venv-cpu
-uv pip install --python .venv-cpu --index-url https://pypi.org/simple \
+uv pip install --python .venv-cpu --no-config \
     torch numpy jaxtyping h5py scipy pyyaml pytest
-uv pip install --python .venv-cpu --no-deps -e src/reconstruction_model -e src/tidmad
+uv pip install --python .venv-cpu --no-config --no-deps \
+    -e src/reconstruction_model -e src/tidmad
 .venv-cpu/bin/python -m pytest src/tidmad/tests
 ```
+
+`--no-config` keeps `[tool.uv.sources]` in this file from redirecting torch back
+at the CUDA index; `--no-deps` keeps the cu124 pin out of the resolution when
+the two workspace packages go in.
+
+**Invoke the interpreter by path.** Neither of the obvious shortcuts works here:
+
+- bare `pytest` runs whatever is first on `PATH` — on a Mac with MacPorts or
+  Homebrew Python that is the system interpreter, which has no torch, and you
+  get five collection errors that look like code failures.
+- `uv run pytest` re-syncs the project first, which means resolving
+  `torch==2.5.1+cu124`, which is the thing that cannot resolve on macOS.
+
+So `.venv-cpu/bin/python -m pytest ...`, or `source .venv-cpu/bin/activate`
+first.
+
+A related trap: a `uv sync` that failed on torch still leaves a `.venv` behind
+holding only the `dev` group — numpy, pytest, jupyter. The directory exists and
+looks like a working environment, but importing `tidmad` from it fails exactly
+as the system Python does. `.venv-cpu` is deliberately separate so a later
+`uv sync` cannot half-repair it.
 
 One test is skipped without the external `docs/tidmad_data_contract.json`.
 `tests/conftest.py` already sets `RECONSTRUCTION_DISABLE_TORCH_COMPILE=1`,
 because Muon's Newton-Schulz `torch.compile` path needs a C++/OpenMP toolchain
 that macOS does not supply by default; the numerics are identical either way.
-
-Running `pytest` against a system Python instead will fail at collection with
-`ModuleNotFoundError: No module named 'torch'` — that is the environment, not
-the code.
 
 The noise-module tutorials live in
 [`notebooks/noise_module_tutorial.ipynb`](notebooks/noise_module_tutorial.ipynb) and
