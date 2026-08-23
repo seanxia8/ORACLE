@@ -83,7 +83,7 @@ this repository.
 | `docs/OPEN_DECISIONS.md` | Researched resolutions of the open technical decisions |
 | `docs/REVISION_PLAN.md` | Canonical shared execution plan (migrated 2026-08-23; see its banner for the audit conflicts still to reconcile) |
 | `docs/PERSONAL_RESEARCH_GUIDE.md` | Private working record and review log — **not for the shared view** |
-| `reference/papers/` | Prior-art and testbed PDFs, with the novelty analysis (`fetch_papers.sh` downloads them) |
+| `reference/papers/` | Prior-art and testbed PDFs, with the novelty analysis (`papers.tsv` is the manifest; the README has the fetch loop) |
 | `latex/paper3_proposal.tex` | Source for the three-page collaboration concept note |
 | `latex/paper3_proposal.pdf` | Compiled proposal |
 | `latex/figures/` | Proposal figures |

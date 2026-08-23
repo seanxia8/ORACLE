@@ -9,22 +9,33 @@ claim to do".
 Every entry is on arXiv and redistributable under its arXiv licence or an open
 licence; nothing here is a publisher-typeset copy.
 
-## Fetching
+## Fetching the PDFs
 
 The manifest is [`papers.tsv`](papers.tsv) — tab-separated
-`arxiv_id <TAB> folder <TAB> filename_stem <TAB> title`. To download everything
-listed there (idempotent; skips files already present):
+`arxiv_id <TAB> folder <TAB> filename_stem <TAB> title`. Everything in it is on
+arXiv, so one loop fetches the set:
 
 ```bash
-bash reference/papers/fetch_papers.sh
+cd reference/papers
+while IFS=$'\t' read -r id dir name _; do
+  out="$dir/${id}_${name}.pdf"
+  if [ -s "$out" ]; then continue; fi
+  echo "fetching $id"
+  curl -fsSL --create-dirs -o "$out" "https://arxiv.org/pdf/$id" || echo "  FAILED $id"
+  sleep 3
+done < papers.tsv
 ```
 
 Run it from a machine with ordinary internet access — arXiv is not reachable
-from the sandboxed agent environments. `2512.01324` (Panda) is already present,
-carried over from the old `paper3/` folder.
+from the sandboxed agent environments. It is idempotent, so re-running it after
+a partial or failed fetch only picks up what is missing, and it sleeps between
+requests, which is what arXiv asks of scripted clients.
 
-To add a paper: append a row to `papers.tsv`, re-run the script, and add the
-`references.bib` entry.
+`2512.01324` (Panda) is already committed, carried over from the old `paper3/`
+folder, so the loop will skip it.
+
+To add a paper: append a row to `papers.tsv`, re-run the loop, and add the
+matching `references.bib` entry.
 
 ---
 
