@@ -91,7 +91,7 @@ def test_training_loop_smoke_two_steps():
 
 
 def test_registry_resolves_tidmad_stft():
-    from tidmad.registry import get_model_entry, load_model_objects
+    from reconstruction_model.models.registry import get_model_entry, load_model_objects
 
     entry = get_model_entry("tidmad_stft")
     assert entry.requires_pairwise_cache is False
