@@ -77,6 +77,13 @@ this repository.
 | `containers/` | Runtime container image definition |
 | `docs/` | Package documentation (`noise_module/`, `reconstruction_model.md`, `tidmad.md`) |
 | `reference/` | Selected external training notes and legacy helper scripts |
+| `scripts/nubench/` | NuBench feasibility scripts (migrated 2026-08-17, post-audit) |
+| `results/` | Checked-in feasibility results with audit caveats |
+| `docs/PAPER3_AUDIT.md` | Adversarial audit of the proposal, repo and plan (2026-08-17) |
+| `docs/OPEN_DECISIONS.md` | Researched resolutions of the open technical decisions |
+| `docs/REVISION_PLAN.md` | Canonical shared execution plan (migrated 2026-08-23; see its banner for the audit conflicts still to reconcile) |
+| `docs/PERSONAL_RESEARCH_GUIDE.md` | Private working record and review log — **not for the shared view** |
+| `reference/papers/` | Prior-art and testbed PDFs, with the novelty analysis (`fetch_papers.sh` downloads them) |
 | `latex/paper3_proposal.tex` | Source for the three-page collaboration concept note |
 | `latex/paper3_proposal.pdf` | Compiled proposal |
 | `latex/figures/` | Proposal figures |
@@ -135,9 +142,11 @@ bibliography.
 
 ## Reproduce the NuBench checks
 
-The NuBench pilot scripts and result files are **not included in this
-repository**; they live in a separate research environment. The commands below
-are recorded for reference only.
+The NuBench pilot scripts now live in [`scripts/nubench/`](scripts/nubench/)
+and the feasibility results (with post-audit caveats) in
+[`results/nubench_hexagon_ice_le_dynedge/`](results/nubench_hexagon_ice_le_dynedge/RESULT.md);
+both were migrated from the external research folder on 17 August 2026 with
+the audit fixes applied (`docs/PAPER3_AUDIT.md`, C11–C17).
 
 The large NuBench database, released prediction Parquet file, and model
 checkpoint are external artifacts and are not included in this repository.
@@ -145,18 +154,20 @@ The pilot script is designed for the official GraphNeT 1.8.0 CPU environment
 and additionally imports PyTorch, PyTorch Geometric, NumPy, pandas, PyArrow,
 scikit-learn, and Matplotlib. The metric-only script requires Polars.
 
-Recompute the released-prediction metrics:
+Recompute the released-prediction metrics (post-audit: computes BOTH the
+`is_track` and `interaction` groupings against Table 6):
 
 ```bash
-python scripts/nubench_reference_metrics.py \
+python scripts/nubench/nubench_reference_metrics.py \
   --predictions /path/to/DynEdge_predictions.parquet \
   --output /path/to/reference_metrics.json
 ```
 
-Run the paired module-dropout pilot:
+Run the paired module-dropout pilot (post-audit: uniform-random sampling,
+nested severities, alignment assert, paired bootstrap CIs):
 
 ```bash
-python scripts/nubench_smoke_pilot.py \
+python scripts/nubench/nubench_smoke_pilot.py \
   --database /path/to/hexagon_ice_le.db \
   --checkpoint /path/to/DynEdge_checkpoint.pth \
   --released-predictions /path/to/DynEdge_predictions.parquet \
