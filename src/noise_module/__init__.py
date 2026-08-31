@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dowling Wong <wangdowling@gmail.com>
+#
+# Part of the modular noise simulator written for the ORACLE study.
+# If you use this module in published work, please cite it: see CITATION.cff
+# at the repository root.
 """Composable noise generation modules for wk7 experiments."""
 
 from .NoiseGenerator import NoiseGenerator
@@ -45,6 +51,12 @@ from .al2o3_athermal import (
     recommend_record_length,
     validate_reference_noise,
 )
+from .reference_budget import (
+    AL2O3_AL_ATHERMAL,
+    AthermalNoiseBudget,
+    BudgetGrid,
+    write_reference_asd,
+)
 from .utils import to_jsonable
 from .spectral_models import (
     BandLimited,
@@ -59,56 +71,60 @@ from .spectral_models import (
 )
 
 __all__ = [
+    "AL2O3_AL_ATHERMAL",
+    "al2o3_athermal_noise_generator",
     "AL2O3_DEFAULT_SAMPLES",
     "AL2O3_DEFAULT_SAMPLING_FREQUENCY",
-    "ArtifactInjector",
+    "alias_fold_psd_density",
     "ArtifactConfig",
-    "CalibrationPreset",
+    "ArtifactInjector",
+    "AthermalNoiseBudget",
     "BandLimited",
+    "benchmark_generation",
+    "bootstrap_interval",
+    "BudgetGrid",
+    "build_optimal_filter",
+    "calibrate_dataset",
+    "CalibrationPreset",
     "CompositeSpectrum",
     "CONFIG_SCHEMA_VERSION",
+    "fit_reference_pulse",
+    "inband_resample_psd_density",
     "Line",
+    "load_al2o3_athermal_composite",
+    "load_psd_density",
     "Lorentzian",
-    "MultiChannelNoiseGenerator",
+    "make_target_psd_density",
+    "migrate_config",
     "MultiChannelConfig",
-    "NoiseGenerator",
-    "OptimalFilter",
-    "NonGaussianNoiseGenerator",
+    "MultiChannelNoiseGenerator",
     "NoiseConfig",
+    "NoiseGenerator",
+    "NonGaussianNoiseGenerator",
+    "OptimalFilter",
     "PowerLaw",
+    "pulse_template_2",
     "PulseFit",
+    "recommend_record_length",
     "ReferenceDataset",
     "Resonance",
     "RollOff",
-    "SpectralComponent",
-    "TemporalNoiseWrapper",
-    "TemporalNoiseConfig",
-    "StreamingNoiseGenerator",
-    "ValidationConfig",
-    "ValidationResult",
-    "White",
-    "alias_fold_psd_density",
-    "inband_resample_psd_density",
-    "load_psd_density",
-    "make_target_psd_density",
     "save_psd_density",
+    "SpectralComponent",
+    "StreamingNoiseGenerator",
     "synthetic_resample_psd_density",
-    "migrate_config",
-    "benchmark_generation",
-    "build_optimal_filter",
-    "bootstrap_interval",
-    "calibrate_dataset",
-    "fit_reference_pulse",
-    "load_al2o3_athermal_composite",
-    "al2o3_athermal_noise_generator",
-    "pulse_template_2",
-    "recommend_record_length",
+    "TemporalNoiseConfig",
+    "TemporalNoiseWrapper",
+    "to_jsonable",
     "validate_artifacts",
     "validate_csd_ensemble",
     "validate_local_nonstationarity",
-    "validate_stationary_gaussian",
     "validate_reference_noise",
-    "to_jsonable",
+    "validate_stationary_gaussian",
+    "ValidationConfig",
+    "ValidationResult",
+    "White",
+    "write_reference_asd",
 ]
 
 __version__ = "0.3.0"
