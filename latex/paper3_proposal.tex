@@ -32,28 +32,35 @@
 for Learned Particle-Reconstruction Representations}\\[-0.12em]
 \normalsize Collaboration concept note}
 \author{Dowling Wong}
-\date{12 August 2026}
+\date{31 August 2026}
 
 \begin{document}
 \maketitle
 \vspace{-1.9em}
 
 \begin{abstract}
-A monitor must answer two questions that average reconstruction accuracy does
-not: what declared mechanism caused an alarm, and what scientific consequence
-followed. We propose a replay-based diagnosis of frozen representations under
-controlled interventions. The central contrast separates acquisition-contract
-violations from clean rare-subgroup physics; the corresponding mechanisms are
-movement along task-relevant versus redundant representation directions and
-loss of support in learned neighbourhoods. We test whether alarms attribute
-these families and whether their magnitude predicts downstream loss, explicitly
-measuring high-alarm/low-consequence and low-alarm/high-consequence cells. The
-testbeds are public neutrino-telescope point clouds and controlled waveforms:
-a public TIDMAD denoising benchmark plus a simulator in which assumed and
-realized noise covariance are known. Layerwise evidence is compared against
-input tests, MMD, classifier two-sample tests, embedding distance, uncertainty,
-and output-only monitoring at a matched false-alert budget, with abstention on
-families the study never declared.
+A monitor on a deployed reconstruction model must answer two questions that
+average accuracy does not: which declared mechanism caused an alarm, and what
+scientific consequence followed. We propose a replay-based diagnosis of frozen
+representations under controlled interventions, organised as three tiers with
+one direction of travel --- mechanism, realism, real data. A controlled
+waveform simulator in which both the assumed covariance $\hat\Sigma$ entering
+the training objective and the realized covariance $\Sigma$ are known supplies
+the mechanism tier: there we test the prediction that an unweighted
+representation displacement is the wrong-metric statistic --- the
+consequence-relevant quantity is displacement in the $\Sigma^{-1}$-whitened
+metric pulled back through the output Jacobian --- using perturbation families
+that dissociate alarm from consequence by construction. A paired
+neutrino-telescope production (one seeded injection replayed through two
+detector geometries, with content-matched acquisition/physics cells and
+undeclared abstention families) supplies the realism tier, testing the
+mechanism tier's failure predictions out of sample on a frozen public model.
+The public TIDMAD benchmark supplies the real-data check: one compact
+transformer trained under two covariance assumptions on identical data.
+Layerwise evidence is compared against input tests, MMD, classifier two-sample
+tests, embedding distance, uncertainty, and output-only monitoring at a
+matched false-alert budget, with abstention on families the study never
+declared.
 \end{abstract}
 
 \section{Gap and contribution}
@@ -68,6 +75,18 @@ ambiguous or unseen failures. The attribution claim is conditional on the
 declared simulator and forward model: unknown physics and model
 misspecification are not identifiable from a response profile alone and are
 routed to abstention.
+
+No public dataset can decide these questions. None carries a known
+assumed-versus-realized covariance, and none is event-paired across the factors
+a causal claim must vary: the released NuBench sets are independent
+per-geometry productions, and TIDMAD's own authors disclaim the scientific
+meaning of its denoising score. The study therefore produces its own evidence
+in two designed datasets --- a controlled-covariance waveform set
+(\textbf{ORACLE-Cov}) and a paired multi-geometry point-cloud set
+(\textbf{ORACLE-Paired}), the latter a citable artifact in its own right ---
+and uses TIDMAD as the real-data check. The tiers are ordered: predictions
+fixed on the mechanism tier are pre-registered before the single confirmatory
+run on the realism tier.
 
 In waveform reconstruction, structured acquisition noise induces a likelihood
 geometry through the inverse covariance: the correct residual weighting is
@@ -214,32 +233,56 @@ cannot escape.
 
 \section{Testbeds and monitoring design}
 
-\textbf{Neutrino-telescope point clouds (realism).} One primary public
-configuration with a released checkpoint. The layerwise arm hooks all four
-DynEdge convolution blocks plus the post-processing and readout stages, not
-only the 128-dimensional pre-head event representation. Module dropout, hit
-thinning, and time jitter instantiate N; S windows use clean low-density strata
-in energy, topology, vertex/containment, and multiplicity, estimated from
-training data only --- with the caveat that module loss \emph{lowers} observed
-multiplicity, so every N cell is matched by an S cell of clean events at the
-same observed multiplicity, charge, and time spread; otherwise attribution
-reduces to recognizing the corruption operator's fingerprint. One secondary
-architecture serves as a consistency check. The released NuBench datasets are
-independent per-geometry productions and share no latent events, so the paired
-detector-geometry contrast is constructed by re-simulation:
-Prometheus~\cite{prometheus} supports re-using one seeded injection across
-detector geometries, and the six NuBench geometry files ship with it. Until that paired set exists, the released
-Hexagon water/ice pair supports only a distribution-level medium comparison,
-and is labelled as such.
+\textbf{Tier 2 --- neutrino-telescope point clouds (realism:
+ORACLE-Paired).} One primary public configuration with a released checkpoint.
+The layerwise arm hooks all four DynEdge convolution blocks plus the
+post-processing and readout stages, not only the 128-dimensional pre-head
+event representation. The data are our own production: the released NuBench
+datasets are independent per-geometry productions and share no latent events,
+so the paired detector-geometry contrast is constructed by re-simulation ---
+Prometheus~\cite{prometheus} re-uses one seeded injection across detector
+geometries (here ORCA and ARCA, both water, so layout is not confounded with
+medium and the photon stage is exactly reproducible), with the NuBench
+detector-response emulation reimplemented in-project, which is precisely where
+the acquisition knobs live. Per geometry, from one injection: module dropout,
+hit thinning, time jitter, gain drift and noise-rate cells instantiate N; S
+windows use clean low-density strata in energy, topology, vertex/containment,
+and multiplicity, estimated from training data only --- with the caveat that
+module loss \emph{lowers} observed multiplicity, so every N cell is matched
+by clean events at the same observed multiplicity, charge, and time spread;
+otherwise attribution reduces to recognizing the corruption operator's
+fingerprint. Undeclared families (double-bang $\nu_\tau$, through-going
+muons, pile-up, correlated module noise) are held entirely outside the
+declared contract for the abstention endpoint, and the injection identifier is
+the pairing key across geometries. One secondary architecture serves as a
+consistency check. Until the paired set exists, the released Hexagon water/ice
+pair supports only a distribution-level medium comparison, and is labelled as
+such. No assumed covariance exists in this tier --- deliberately: it tests,
+out of sample, the monitor-failure predictions pre-registered on Tier 1, and
+it is where the one alarm computable \emph{without} knowing $\Sigma$ (the
+Jacobian-projected displacement) earns its deployability claim.
 
-\textbf{Waveforms (mechanism; parallel track).} The synthetic arm uses a
-noise-aware linear control and a generator that constructs PSD/cross-spectral
-density models, samples seeded frequency-domain coefficients with real-signal
-symmetry, and adds declared artifacts. The public TIDMAD~\cite{tidmad} arm uses a
-$\sim0.6$M-parameter two-stage domain transformer and the release's denoising
-score, comparing otherwise identical MSE and inverse-PSD-weighted objectives.
-This compact transformer is a diagnostic subject, not a foundation model; a
-larger pretrained model is only a later gated comparison.
+\textbf{Tier 1 --- controlled waveforms (mechanism: ORACLE-Cov).} The
+synthetic arm uses a noise-aware linear control and a generator that
+constructs PSD/cross-spectral density models, samples seeded frequency-domain
+coefficients with real-signal symmetry, and adds declared artifacts; the
+generator reports both the implied and the realized covariance of every
+ensemble. The inverse-PSD-weighted training objective makes the encoder's
+assumed covariance $\hat\Sigma$ a literal property of the loss, so
+$\hat\Sigma\neq\Sigma$ is a controlled experimental lever, swept through
+the condition number $\kappa(\hat\Sigma^{-1}\Sigma)$. Every theoretical
+claim is decided here, and the power analysis that sizes the other tiers runs
+here, because only here is the null exactly simulable.
+
+\textbf{Tier 3 --- TIDMAD (real data).} The public TIDMAD~\cite{tidmad} arm
+uses a $\sim0.6$M-parameter two-stage domain transformer, comparing otherwise
+identical MSE and inverse-PSD-weighted objectives --- two assumed covariances
+on identical real electronics noise, the naturally occurring real-data echo of
+the Tier-1 contrast. The release's denoising score is a development
+consequence only; the confirmatory consequence is the relative
+exclusion-limit comparison. This compact transformer is a diagnostic subject,
+not a foundation model; a larger pretrained model is only a later gated
+comparison.
 
 \textbf{Monitoring comparison.} Each window records input-quality summaries,
 named-layer moments or sketches, outputs, uncertainty, delayed task metrics,
@@ -277,10 +320,13 @@ and a predeclared equivalence margin.
   \end{minipage}
   \vspace{-0.45em}
   \caption{Complementary testbeds. (a) Six top-view geometries, reproduced
-  from NuBench Fig.~3~\cite{nubench}. (b) The supplied Al$_2$O$_3$/Al
-  athermal-detector response and component PSDs. (c) The generator composes a
+  from NuBench Fig.~3~\cite{nubench}. (b) The analytic Al$_2$O$_3$/Al
+  athermal reference budget --- component and total noise ASDs with the
+  two-pole signal response --- regenerated from the parameterised model in
+  \texttt{noise\_module.reference\_budget}. (c) The generator composes a
   clean optimal-filter-like pulse with stationary colored noise, piecewise
-  nonstationarity, and explicit artifacts. Panels (b)--(c) are project outputs.}
+  nonstationarity, and explicit artifacts. Panels (b)--(c) are project
+  outputs.}
   \label{fig:testbeds}
   \vspace{-0.7em}
 \end{figure*}
@@ -302,6 +348,8 @@ $\{$N,S$\}$; paired CI vs generic arm; unknown AUROC \\
 E3 & Capture vs sample/sketch & p50/p95 latency; bytes/event; power/F1 loss \\
 E4 & Alarm vs consequence (C4) & $\rho(A,K)$; AUROC for $K\geq\kappa_m$;
 off-diagonal rates \\
+E5 & Paired-geometry transfer & Pre-registered Tier-1 failure predictions
+tested once on ORACLE-Paired; layer-profile stability across geometries \\
 \bottomrule
 \end{tabularx}
 \label{tab:experiments}
@@ -313,6 +361,12 @@ off-diagonal rates \\
 \begin{tcolorbox}[colback=black!3,colframe=black!35,boxrule=0.4pt,
   left=4pt,right=4pt,top=3pt,bottom=3pt,arc=1pt]
 \footnotesize
+\textbf{Phase 0 (now): mechanism tier.} The output-null/output-aligned
+dissociation and the $\kappa(\hat\Sigma^{-1}\Sigma)$ sweep run on the
+controlled simulator today --- no external dependency, first citable result,
+and the power analysis that sizes every later phase. Monitor-failure
+predictions are frozen here before any Tier-2 run.
+
 \textbf{Phase 1 (B): paired detector geometry.} Generate common latent events
 by Prometheus re-simulation (one seeded injection, two geometries at a common
 site/depth) under one declared acquisition intervention; the released NuBench
@@ -362,8 +416,8 @@ learned neutrino-telescope reconstruction.
 
 The agreed sequence is B$\rightarrow$A$\rightarrow$A$\oplus$B, while the
 waveform/TIDMAD arm runs in parallel and supplies the first code-complete
-contrast. Work should move to a new shared repository rather than debugging the
-old inaccessible link. A proposed fortnightly meeting reviews one frozen
+contrast. Work is consolidated in the shared ORACLE repository. A proposed
+fortnightly meeting reviews one frozen
 protocol or result; initial ownership is waveform infrastructure and generic
 monitoring on Dowling's side, and geometry/SPINE physics choices and validation
 on Junjie's side, with thresholds and claim changes approved jointly. The first
