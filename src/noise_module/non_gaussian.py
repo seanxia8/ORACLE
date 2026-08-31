@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dowling Wong <wangdowling@gmail.com>
+#
+# Part of the modular noise simulator written for the ORACLE study.
+# If you use this module in published work, please cite it: see CITATION.cff
+# at the repository root.
 """First-class non-Gaussian innovation and colored-noise models."""
 
 from __future__ import annotations

@@ -6,8 +6,34 @@ build-backend = "setuptools.build_meta"
 name = "modular-noise-simulator"
 dynamic = ["version"]
 description = "Validated stationary, nonstationary, artifact, and multichannel noise simulation"
+readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Dowling Wong", email = "wangdowling@gmail.com" },
+]
+maintainers = [
+    { name = "Dowling Wong", email = "wangdowling@gmail.com" },
+]
+keywords = [
+    "noise simulation",
+    "power spectral density",
+    "correlated noise",
+    "detector physics",
+    "cryogenic calorimetry",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 dependencies = ["numpy>=1.24", "scipy>=1.10"]
+
+[project.urls]
+Homepage = "https://github.com/seanxia8/ORACLE"
+Repository = "https://github.com/seanxia8/ORACLE"
 
 [project.optional-dependencies]
 test = ["pytest>=7.0"]
@@ -22,4 +48,7 @@ noise_module = "."
 version = { attr = "noise_module.__version__" }
 
 [tool.setuptools.package-data]
-noise_module = ["data/Al2O3_Al_athermal/*"]
+noise_module = ["data/Al2O3_Al_athermal/*.json", "data/Al2O3_Al_athermal/*.md"]
+
+[tool.setuptools.license-files]
+paths = ["LICENSE"]

@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: >-
+  If you use the modular noise simulator (src/noise_module) in published work,
+  please cite it using the metadata below.
+title: "Modular noise simulator: validated stationary, non-stationary, artifact and correlated multi-channel noise generation"
+abstract: >-
+  A composable noise simulation stack for detector-physics waveform studies. It
+  provides a PSD-based stationary Gaussian single-channel core; correlated
+  multi-channel generation in independent, shared-private and low-rank latent
+  modes that returns both the implied and the realized covariance; temporal
+  wrappers for non-stationarity, piecewise stationarity and drift; injection of
+  spectral lines, glitches and bursts; PSD resampling between sampling rates;
+  and a confidence-aware validation suite with bootstrap intervals over
+  cross-spectral-density ensembles. It was written to provide a controlled
+  testbed in which the assumed and the realized noise covariance are both known.
+type: software
+authors:
+  - family-names: Wong
+    given-names: Dowling
+    email: wangdowling@gmail.com
+    affiliation: "Institute of Experimental Particle Physics (ETP), Karlsruhe Institute of Technology"
+repository-code: "https://github.com/seanxia8/ORACLE"
+license: MIT
+version: 0.1.0
+date-released: "2026-08-31"
+keywords:
+  - noise simulation
+  - power spectral density
+  - correlated noise
+  - covariance mismatch
+  - detector physics
+  - cryogenic calorimetry

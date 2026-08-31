@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dowling Wong <wangdowling@gmail.com>
+#
+# Part of the modular noise simulator written for the ORACLE study.
+# If you use this module in published work, please cite it: see CITATION.cff
+# at the repository root.
 """Phase 1/2 of the Al2O3_Al_athermal reverse-engineering plan.
 
 Phase 1: fit each reference noise-budget ASD file
