@@ -8,6 +8,7 @@ dependencies = []
 [tool.uv.workspace]
 members = [
     "src/noise_module",
+    "src/oracle_paired",
     "src/qp_simulator",
     "src/reconstruction_model",
     "src/tidmad_transformer",

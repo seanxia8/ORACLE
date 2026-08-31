@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oracle-paired"
+dynamic = ["version"]
+description = "ORACLE-Paired dataset production: Prometheus run plans, NuBench-style detector response, N/S/U interventions, content matching, provenance export"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Dowling Wong", email = "wangdowling@gmail.com" },
+]
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+export = ["pandas>=2.0", "pyarrow>=14"]
+test = ["pytest>=7.0"]
+
+[tool.setuptools]
+packages = ["oracle_paired"]
+
+[tool.setuptools.package-dir]
+oracle_paired = "."
+
+[tool.setuptools.dynamic]
+version = { attr = "oracle_paired.__version__" }
