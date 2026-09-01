@@ -1,7 +1,9 @@
 # ORACLE experiment design — the agreed solution
 
-_31 August 2026. The canonical short version. Full derivations, sources and
-caveats: `docs/archive/DATASET_PRODUCTION_PLAN.md` (production detail),
+_31 August 2026. The canonical short version. **Buildable form:
+`IMPLEMENTATION_PLAN.md` (work packages, interfaces, acceptance criteria,
+gates); reviewer instructions: `REVIEW_PROMPTS.md`.** Full derivations,
+sources and caveats: `docs/archive/DATASET_PRODUCTION_PLAN.md` (production detail),
 `docs/archive/OPEN_DECISIONS.md` D1–D8, `docs/archive/NOVELTY_REVIEW.md`
 (claim wording), `docs/archive/PAPER3_AUDIT.md`._
 
