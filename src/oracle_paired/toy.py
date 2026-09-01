@@ -32,10 +32,19 @@ def toy_track(
     photons_per_gev: float = 0.35,
     attenuation_m: float = 60.0,
     rng: np.random.Generator | int | None = None,
+    absolute_acceptance: bool = False,
 ) -> EventPhotons:
     """A muon-track-like event: photons on OMs near a line, times ordered
     along it. Yield scales with energy; OMs light up with probability
-    falling exponentially in distance from the track."""
+    falling exponentially in distance from the track.
+
+    ``absolute_acceptance=False`` (default) normalises the OM weights, so the
+    detector always collects the emitted photon budget — convenient for
+    unit tests. ``absolute_acceptance=True`` additionally keeps each photon
+    only with probability exp(-d/attenuation) for its OM, so a sparse
+    detector genuinely catches less light than a dense one: use this when
+    comparing geometries.
+    """
     rng = np.random.default_rng(rng)
     if vertex_m is None:
         vertex_m = geometry.positions_m.mean(axis=0)
@@ -51,10 +60,15 @@ def toy_track(
     weights = np.exp(-perp / attenuation_m)
     weights = weights / weights.sum()
     om_choice = rng.choice(geometry.n_om, size=n_target, p=weights)
+    if absolute_acceptance:
+        keep = rng.random(n_target) < np.exp(-perp[om_choice] / attenuation_m)
+        om_choice = om_choice[keep]
+        if om_choice.size == 0:
+            om_choice = np.array([int(np.argmin(perp))])
     t = s[om_choice] / C_ICE_M_PER_NS
-    t = t - t.min() + rng.normal(0.0, 2.0, n_target)
+    t = t - t.min() + rng.normal(0.0, 2.0, om_choice.size)
     return EventPhotons(
-        event_id, om_choice, t, np.ones(n_target, dtype=bool),
+        event_id, om_choice, t, np.ones(om_choice.size, dtype=bool),
         truth={
             "energy_gev": float(energy_gev),
             "zenith_rad": float(zenith_rad),

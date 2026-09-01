@@ -26,3 +26,6 @@ oracle_paired = "."
 
 [tool.setuptools.dynamic]
 version = { attr = "oracle_paired.__version__" }
+
+[tool.setuptools.package-data]
+oracle_paired = ["data/geofiles/*.geo", "data/geofiles/README.md"]

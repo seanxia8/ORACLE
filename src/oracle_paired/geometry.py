@@ -59,10 +59,65 @@ class DetectorGeometry:
 
     @classmethod
     def from_geo_rows(cls, rows: np.ndarray) -> "DetectorGeometry":
-        """Build from (n_om, 4) rows of x, y, z, string_id — the layout of a
-        Prometheus .geo table once comments are stripped."""
+        """Build from (n_om, >=4) rows of x, y, z, string_id[, om_id] — the
+        layout of a Prometheus ``.geo`` table once headers are stripped."""
         rows = np.asarray(rows, dtype=float)
         return cls(rows[:, :3], rows[:, 3].astype(int))
+
+    @classmethod
+    def from_geo_file(cls, path: str | Path) -> "DetectorGeometry":
+        """Load a Prometheus ``.geo`` file.
+
+        Format: ``### Metadata ###`` lines (medium, DOM radius), then
+        ``### Modules ###`` and one ``x y z string_id om_id`` row per OM.
+        Non-numeric lines are skipped, so the header needs no special casing.
+        """
+        rows = []
+        for line in Path(path).read_text().splitlines():
+            parts = line.split()
+            if len(parts) < 4:
+                continue
+            try:
+                rows.append([float(v) for v in parts[:4]])
+            except ValueError:
+                continue
+        if not rows:
+            raise ValueError(f"No module rows found in {path}")
+        return cls.from_geo_rows(np.asarray(rows))
+
+    @classmethod
+    def bundled(cls, name: str) -> "DetectorGeometry":
+        """One of the six vendored NuBench geometries by Prometheus file stem:
+        ``orca``, ``arca``, ``trident``, ``pone_triangle``, ``gvd``,
+        ``icecube``. See ``data/geofiles/README.md`` for provenance."""
+        path = Path(__file__).resolve().parent / "data" / "geofiles" / f"{name}.geo"
+        if not path.exists():
+            raise FileNotFoundError(f"No bundled geometry named {name!r}: {path}")
+        return cls.from_geo_file(path)
+
+    def centered(self) -> "DetectorGeometry":
+        """The same detector translated so its centroid is at the origin —
+        the 'common site and depth' convention for cross-geometry pairing."""
+        return DetectorGeometry(
+            self.positions_m - self.positions_m.mean(axis=0), self.string_id
+        )
+
+    @property
+    def footprint_extent_m(self) -> float:
+        """Horizontal extent: twice the x-y circumradius about the centroid."""
+        c = self.positions_m[:, :2].mean(axis=0)
+        return 2.0 * float(np.max(np.linalg.norm(self.positions_m[:, :2] - c, axis=1)))
+
+    @property
+    def median_string_spacing_m(self) -> float:
+        """Median nearest-neighbour distance between string footprints."""
+        xy = np.array([self.positions_m[self.string_id == s][:, :2].mean(axis=0)
+                       for s in self.strings])
+        if xy.shape[0] < 2:
+            return float("nan")
+        d = np.linalg.norm(xy[:, None, :] - xy[None, :, :], axis=2)
+        np.fill_diagonal(d, np.inf)
+        return float(np.median(d.min(axis=1)))
 
     @classmethod
     def demo_grid(
