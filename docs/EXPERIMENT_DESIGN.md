@@ -86,3 +86,54 @@ licence-clean (Prometheus LGPL-2.1, our seeds). **ORACLE-Cov does not go out
 before the preprint**: publishing its dataset plus generation scripts is
 publishing `src/noise_module/`, whose authorship position was only just
 established. Release together with the arXiv submission.
+
+## Models versus diagnostics — what exists, what we build
+
+Two things the meeting note blurs. The **subject models** — the frozen
+networks being monitored — all exist: the compact two-stage transformer in
+`src/tidmad_transformer/` and `src/reconstruction_model/` for Tiers 1 and 3
+(retrained per assumed covariance Σ̂; that retraining *is* the experiment),
+and DynEdge, ParticleNeT, GRIT and DeepIce from GraphNeT for Tier 2. Nothing to
+download or invent.
+
+The **diagnostics are protocol code, not models**, and most of it is standard
+machinery to be reused and cited. The three bold rows are small in code and are
+the paper; build them first, on Tier 1, because the pre-registered predictions
+for Tier 2 come from them.
+
+| Component | Status | Tiers |
+|---|---|---|
+| Representation hooks | partly done — `pooled_representation` is in; DynEdge hook points settled (D4); finish the package | 1, 2, 3 |
+| Standardized displacement, k-NN retention, principal angles | implement — standard linear algebra, ~200 lines; parts exist in `scripts/nubench/` | 1, 2, 3 |
+| **Σ⁻¹-whitened displacement** | implement — trivial once Σ is known | **1 only** (needs Σ) |
+| **Jacobian-projected displacement** | implement — autograd Jacobian of output w.r.t. representation, project; the one monitor computable *without* knowing Σ | 1, 2, 3 |
+| **Output-null / output-aligned perturbation generators** | implement — SVD of the local output Jacobian; norm-matched | 1 (designed C4), 2 (replication) |
+| Baselines: corrected univariate KS, RBF-MMD, classifier two-sample test, embedding mean/covariance distance, output and uncertainty tests | **reuse** — `alibi-detect` ships MMD, C2ST and KS drift detectors; cite, do not reimplement | all |
+| Five-arm attribution classifier (input / output+uncertainty / final embedding / all-generic / full layerwise) | reuse — scikit-learn regularized logistic regression, identical splits | all |
+| Conformal abstention, risk–coverage AUC | reuse (`MAPIE`) or ~50 lines of split conformal | 1, 2 |
+| Content-matched clean cells (audit P1.1) | **done** — `oracle_paired.matching` | 2 |
+| Consequence variable K | angular error (trivial); `K_rel` via TIDMAD's upstream Brazil-band code (D2); `K_full` on the controlled simulator | 2 / 3 / 1 |
+| Activation-patching causal check (before any repair claim) | implement — substitute the clean stage-k representation into the perturbed forward pass; simple hook | 1, 2 |
+| LoRA repair | reuse — `peft` | 1, 2 |
+| D6 power analysis / null simulation | implement — scripts on ORACLE-Cov; the only place the null is exactly simulable | 1 (sizes every other arm) |
+
+Rough size of the whole layer: 1.5–3k lines, of which about 80% is wiring
+standard components. That is consistent with `docs/archive/NOVELTY_REVIEW.md`:
+the contribution is the instantiation and the evaluation protocol, not new
+monitors.
+
+## Which datasets, finally
+
+Of the candidates in the meeting note — TIDMAD, NuBench, MicroBooNE open data,
+LIGO/Virgo/KAGRA — the paper uses **two, plus one that was not on the list**:
+
+| | Role | Why |
+|---|---|---|
+| **Controlled simulator** (`src/noise_module/`, ORACLE-Cov) | Tier 1 — the headline | the only place Σ̂ and Σ are both known; unblocked today |
+| **NuBench**, via our own Prometheus production (ORACLE-Paired), *not* the released tarballs | Tier 2 — realism | pairing, matched cells, frozen public model, physics consequence variable |
+| **TIDMAD** | Tier 3 — real data | two Σ̂ trainings on identical real electronics noise; already in hand |
+| MicroBooNE open data | future work, one sentence | LArTPC is already covered by the Panda-before-SPINE decision (D3) as the *later* domain extension; MicroBooNE adds entry cost without adding a claim |
+| LIGO / Virgo / KAGRA | future work, one paragraph | not needed, but the strongest *optional* external check: the assumed covariance is literally public (the published ASD), glitches are Σ̂ ≠ Σ with real ground-truth labels (Gravity Spy), and MLGWSC-1 dataset 4 supplies real O3a noise plus public frozen detection models. If a second real-data arm is ever wanted, this is the one; budget two to three weeks of domain entry |
+
+Ten candidate testbeds against a diagnostics layer that is still mostly
+unwritten is the project's largest schedule risk. Three is the number.
