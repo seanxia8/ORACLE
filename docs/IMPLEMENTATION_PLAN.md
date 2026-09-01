@@ -5,6 +5,10 @@ says what the study is; this one says what gets written, in what order, with
 what interfaces, and what "done" means for each piece. Review it with
 `docs/REVIEW_PROMPTS.md` §A before any code is written, and §B after._
 
+_Revision 2, same day: the §A review (`docs/reviews/2026-08-31_planA.md`)
+returned twelve blockers; every one is resolved below and marked **[A-Bn]**.
+Two scope decisions it forced are flagged for the collaboration in §7._
+
 ---
 
 ## 0. Ground rules — what "real, not toy" means here
@@ -24,15 +28,19 @@ Every rule below is enforced by something a reviewer can check, not by intent.
 3. **Every metric has an analytic unit test and a positive control.** A
    monitor that cannot be shown to recover a known answer on synthetic data
    with a closed-form solution (WP2 tests) does not enter the frozen set. A
-   metric is promoted from descriptive to confirmatory only if it responds
-   monotonically to the positive-control severity ladder.
+   metric is promoted from descriptive to confirmatory **only** on
+   positive-control monotonicity — never on how well it beats a baseline
+   **[A-B12]**. Baselines receive the same declared tuning budget on dev
+   data (one hyper-parameter grid each, listed in the pre-registration).
 4. **Baselines get the same budget.** Identical windows, identical
    false-alert calibration on the same clean null, identical splits. A
    baseline that is not calibrated to 1 % FAR on held-out clean data is not a
    baseline.
-5. **Resampling units are the real units.** Intervals resample *event groups*
-   and *perturbation seeds* separately; never pulses, never windows that share
-   an event. Enforced in `oracle_diag.report`.
+5. **Resampling units are the real units.** Intervals resample *event groups*,
+   *perturbation seeds* and — where more than one subject model is trained —
+   *model seeds*, as separate nested levels; never pulses, never windows that
+   share an event. Enforced in `oracle_diag.report`. Experiments with a single
+   model seed say so and restrict their claim accordingly.
 6. **Seeds and provenance in every artifact.** Each result table carries the
    config hash, the git commit, the data manifest hash, and the seed list.
    Anything without them is dev output.
@@ -45,7 +53,20 @@ Every rule below is enforced by something a reviewer can check, not by intent.
    from `oracle_diag.hooks.benchmark` on the real models with p50/p95 over
    ≥ 30 repetitions, wall-clock and bytes, on a named machine.
 10. **Nothing is "validated" by adaptation gains.** Any localization claim is
-    preceded by activation patching (WP6); LoRA repair is secondary.
+    preceded by activation patching (WP6); LoRA repair is out of scope for
+    this paper (§7).
+11. **One primary endpoint per claim; everything else is corrected.** Each
+    claim names exactly one primary endpoint. All secondary endpoints across
+    arms × monitors × families × experiments are controlled with
+    Benjamini–Hochberg FDR at 0.05 within each claim, and the prediction table
+    (§5) is scored as a single pre-registered summary (fraction of rows
+    confirmed, with a binomial CI), not as row-wise tests **[A-B11]**.
+12. **Freezing is versioned.** The protocol freezes in numbered parts, each
+    with its own hash: `core` (endpoints, thresholds, families, margins) at
+    M0; `counts` (from the power analysis) at M3; `bridge` (the prediction
+    table) at M3. A confirmatory config lists which parts it depends on; a
+    result carries the hashes of exactly those parts **[A-B6]**. cov_B needs
+    only `core`, which is why it can be the first citable result.
 
 ---
 
@@ -111,7 +132,8 @@ class Metric(Protocol):
     name: str
     def fit(self, clean: list[RepresentationBatch]) -> "Metric": ...      # clean reference only
     def score(self, batch: RepresentationBatch) -> float: ...             # alarm magnitude A
-    def needs_covariance(self) -> bool: ...                               # True only for whitened
+    def needs_covariance(self) -> bool: ...                               # True only for pullback-whitened
+    def is_analytic_for(self, family: Family) -> bool: ...                # True when the result is by construction (A-B3)
 
 class Perturbation(Protocol):
     family: Family
@@ -134,16 +156,40 @@ must pass), and dependencies. Effort is in focused engineering days.
 
 ### WP0 — Protocol freeze (`docs/PREREGISTRATION.md`) · 2 d · no deps
 
-Deliverables: the frozen protocol — for each claim the exact endpoint,
-threshold and analysis; the declared N/S family lists per tier; the undeclared
-U list; κ_m per tier with justification; false-alert budget 1 %; equivalence
-margins (ΔF1 ±0.05; power 5 points); resampling units; the severity ladders;
-the positive-control definitions; the *prediction table* skeleton to be filled
-after Tier 1 (§5). A `freeze` command writes the SHA-256 of the file into
-`protocol/frozen.json`.
-AC: every claim C1–C5 maps to ≥ 1 experiment and ≥ 1 numeric endpoint; every
-experiment maps back to a claim; a reviewer running `REVIEW_PROMPTS.md §A`
-finds no unresolved blocker.
+Deliverables: the frozen protocol, in three hashed parts (`core`, `counts`,
+`bridge`; §0.12). `core` contains:
+
+- **One claim ladder** **[A-B8]** — the proposal's, adopted everywhere:
+  **C1** detection · **C2** attribution *with abstention* (abstention is a C2
+  endpoint family, not a separate claim) · **C3** cost · **C4** alarm ranks
+  consequence · **C5** stage localization, tested by activation patching only
+  (LoRA repair is out of scope, §7). `EXPERIMENT_DESIGN.md`'s table is
+  reconciled to this ladder.
+- **The claim → experiment → endpoint → threshold table**, both directions
+  complete, including **E0** (the deterministic E-fault gate:
+  sensitivity/specificity on planted unit/coordinate/metric faults) and
+  numeric endpoints for E1–E4, T1 and cov_E, not only E5.
+- **Equivalence margins for every comparison** **[A-B9]**: ΔF1 ±0.05; power
+  5 points; for cov_A, "degrades" means Δρ_Euclid(κ=10³ vs κ=1) ≤ −0.2 with
+  95 % CI excluding 0, and "does not degrade" means |Δρ_pullback| ≤ 0.10 with
+  the CI inside ±0.10; anything else is "inconclusive".
+- **The matching specification** **[A-B5]**: features (n_pulses, total
+  charge, time spread), standardized by the clean pool; caliper 1.0 in
+  standardized Euclidean distance; 1:1 without replacement; **unmatched N
+  events are retained in a declared `N*_unmatched` cell and reported
+  separately, never dropped**; realized match rate reported with the result.
+- **Multiplicity** **[A-B11]**: the primary endpoint per claim; BH-FDR 0.05
+  over secondaries within claim; the §5 table scored as one summary statistic.
+- Declared N/S family lists per tier; the U list; κ_m per tier with
+  justification; FAR budget 1 %; resampling units incl. model seed; severity
+  ladders; positive-control definitions; **the baselines' tuning grids**
+  **[A-B12]**; the "strong generic" arm definition.
+
+`freeze <part>` writes `protocol/frozen/<part>.json` with the SHA-256 of the
+corresponding file section.
+AC: every claim C1–C5 maps to ≥ 1 experiment with a numeric primary endpoint
+and threshold; every experiment maps back to a claim; the §A reviewer finds no
+unresolved blocker.
 
 ### WP1 — `oracle_diag.hooks` · 3 d · deps: none (models exist)
 
@@ -159,16 +205,23 @@ p50/p95 latency and bytes/event on a named machine over ≥ 30 runs.
 ### WP2 — `oracle_diag.metrics` · 4 d · deps: WP1
 
 Deliverables: `StandardizedDisplacement` (normalized by clean within-stratum
-dispersion), `WhitenedDisplacement(Σ)` (Σ⁻¹ metric; `needs_covariance=True`),
-`JacobianProjectedDisplacement` (∂output/∂Z at the stage, via autograd;
-projects displacement onto the leading right-singular subspace), `PrincipalAngles`,
-`KNNRetention`, `LayerProfile` (vector of per-stage scores).
-AC (analytic): on Gaussian synthetic data with known Σ, whitened displacement
-equals the Mahalanobis distance to 1e-9; on a *linear* model
-`y = W Z`, Jacobian-projected displacement of a null-space perturbation is
-exactly 0 and of an aligned one equals its norm times the singular value; kNN
-retention is 1.0 on identity and → 1/k on random permutation. AC (control):
-each metric is monotone across the positive-control ladder on Tier-1 dev data.
+dispersion); `JacobianProjectedDisplacement` (J = ∂output/∂Z at the stage via
+autograd; displacement projected onto J's leading right-singular subspace);
+**`PullbackWhitenedDisplacement(Σ)`** **[A-B2]** — the paper's own statistic:
+displacement δZ measured in the metric G = Jᵀ Σ⁻¹ J, i.e. ‖Σ^{-1/2} J δZ‖, the
+Σ⁻¹-whitened output-space displacement pulled back to the stage
+(`needs_covariance=True`). A standalone Σ⁻¹ metric *at the representation* is
+not well defined (Σ lives in output/input space) and is not delivered;
+`PrincipalAngles`; `KNNRetention`; `LayerProfile`.
+Each metric declares `is_analytic_for(family)` **[A-B3]**: `Jacobian
+Projected` and `PullbackWhitened` return True for `null`/`aligned` families
+built from the same Jacobian, and reports mark those cells "by construction".
+AC (analytic): on a linear model `y = W Z` with output noise covariance Σ,
+`PullbackWhitened` equals the Mahalanobis distance of `W δZ` under Σ to 1e-9;
+`JacobianProjected` of a null-space perturbation is exactly 0 and of an aligned
+one equals its norm times the singular value; kNN retention is 1.0 on identity
+and → 1/k on random permutation. AC (control): each metric is monotone across
+the positive-control ladder on Tier-1 dev data.
 
 ### WP3 — `oracle_diag.perturb` · 3 d · deps: WP1
 
@@ -178,10 +231,11 @@ SVD, norm-matched to a declared displacement magnitude; input-level adapters
 that wrap `noise_module` N families (waveforms) and `oracle_paired`
 interventions (point clouds) behind the same `Perturbation` protocol.
 AC: on the linear model, `OutputNull` changes outputs by < 1e-6 relative and
-`OutputAligned` by the predicted amount; norms match to 1e-6; on the real
-compact transformer, `OutputNull` changes the downstream consequence K by
-< 5 % of what `OutputAligned` does at the same norm (this *is* the Cov-B
-pre-check and is recorded, not asserted).
+`OutputAligned` by the predicted amount; norms match to 1e-6; on a *synthetic
+nonlinear* model with a known Jacobian, first-order agreement to the declared
+tolerance. **No acceptance criterion touches the real subject model's K**
+**[A-B7]** — that measurement is cov_B's confirmatory result and may not be
+observed before cov_B's prediction is registered.
 
 ### WP4 — `oracle_diag.baselines` · 2 d · deps: WP1
 
@@ -223,7 +277,11 @@ held-out seed lists), experiment registry, data-manifest hashing, bootstrap
 over (event_group, perturbation_seed) with the correct nesting, `RESULT.md`
 generator (endpoint, estimate, CI, n, config hash, commit), and the
 **toy-import guard**: a test that fails if anything under `experiments/`
-imports `oracle_paired.toy` or any `demo_*` symbol.
+imports `oracle_paired.toy` or any `demo_*` symbol; and the **figure
+provenance guard**: every figure under `latex/figures/` produced by the
+pipeline carries a sidecar `.json` naming its confirmatory `RESULT.md` and
+hashes, and a test fails on any figure whose sidecar points at `results/dev/`
+or is missing.
 AC: a confirmatory run with a stale hash exits non-zero with a clear message;
 a synthetic experiment with known truth gets correct CI coverage (≈ 95 %) under
 the nested bootstrap; the toy guard fails on a deliberately planted import.
@@ -236,16 +294,25 @@ then A and C.
 - **cov_B_dissociation.** Subject: compact transformer trained under Σ̂
   (inverse-PSD objective) on `noise_module` data. Arms at matched displacement
   norm at the pooled stage and one mid stage: `null`, `aligned`, `random`,
-  `clean`. Monitors: all WP2 + WP4. Endpoint: per-arm K, per-arm A for each
-  monitor; the pre-registered sign prediction (Euclidean-magnitude monitors
-  rank `null` ≥ `aligned`; Jacobian-projected and whitened rank `aligned` ≫
-  `null`). Seeds: 20 perturbation seeds × 5 model seeds. Output: the first
-  citable figure.
+  `clean`. Monitors: all WP2 + WP4. **What is and is not a test here**
+  **[A-B3]**: that `JacobianProjected` and `PullbackWhitened` rank `aligned` ≫
+  `null` is *true by construction* (same Jacobian) and is reported as such,
+  not as a finding. The falsifiable, pre-registered content is (i) **K**: the
+  actual downstream physics loss is ≈ 0 on `null` and large on `aligned` at
+  the same norm — i.e. the local linearization predicts the nonlinear
+  consequence (threshold: K_null ≤ 0.1 K_aligned, CI excluding 0.5); (ii)
+  every magnitude-only monitor (Euclidean displacement, embedding distance,
+  MMD, C2ST) ranks `null` ≥ `aligned` — an empirical failure of real
+  baselines, not a definition; (iii) `random` falls between. Seeds: 20
+  perturbation × 5 model seeds, with model seed as a bootstrap level (§0.5).
+  Output: the first citable figure. Depends on `core` only.
 - **cov_D_power.** Simulate the null (clean vs clean windows) for every
   endpoint at candidate n; size windows-per-cell for 80 % power at 1 % FAR
-  against the smallest severity in the ladder; write the numbers into
-  `PREREGISTRATION.md` — this is what freezes WP0's counts and ORACLE-Paired's
-  120k.
+  against the smallest severity in the ladder; write the numbers into the
+  `counts` part of the pre-registration. **The production event count is an
+  output of this step, not an input**; 120k in earlier documents is a
+  placeholder. cov_D's null draws use a seed range disjoint from every later
+  FAR-calibration seed range (listed in `core`).
 - **cov_A_kappa_sweep.** Train under Σ̂; deploy under Σ with
   κ(Σ̂⁻¹Σ) ∈ {1, 3, 10, 30, 100, 300, 1000}, constructed by
   `MultiChannelNoiseGenerator` with declared correlation structure (implied and
@@ -256,9 +323,18 @@ then A and C.
 - **cov_C_nsu_waveform.** N = `noise_module` families (PSD change, drift,
   lines, glitches, non-Gaussian tails) at the ladder; S = clean windows from
   declared support tails (amplitude, rise time, pile-up spacing); U = held-out
-  families. Endpoints: C1 (power at 1 % FAR, delay in windows), C2 (macro-F1,
-  ΔF1 vs the all-generic arm with CI and the three-way reading), C3 cost, C4
-  observational. Every N cell has a content-matched S cell.
+  families. **The primary C2 contrast is N versus its content-matched clean
+  twins** (the audit P1.1 design; WP0 matching spec) **[A-B4]**; the S
+  physics families are the *secondary* N/S contrast, each S cell additionally
+  matched to its assigned N cell on the same three features so that the
+  secondary is not fingerprint recognition either. Endpoints: C1 (power at
+  1 % FAR, delay in windows), C2 (macro-F1 on matched cells; ΔF1 vs the
+  all-generic arm with CI and the three-way reading; abstention AUROC on U;
+  risk–coverage AUC), C3 cost, C4 observational within severity strata.
+- **cov_E_patching (C5).** Activation patching at each stage on cov_C's
+  consequential N cells: fraction of K recovered when the clean stage-k
+  representation is substituted; the localization claim is "stage k* recovers
+  ≥ 80 % of K and no earlier stage recovers ≥ 50 %". No adaptation step.
 
 AC: each experiment has `PREREGISTRATION.md` section, `RESULT.md` with CIs,
 `mode: confirmatory` artifacts, and passes the toy guard; cov_B's sign
@@ -268,17 +344,29 @@ prediction is stated in the pre-registration *before* the confirmatory run.
 
 Deliverables: `oracle_paired.prometheus_io` (Prometheus parquet →
 `EventPhotons`, with schema test against a real Prometheus output file);
-cluster submission from `prometheus_config_pairs` (one injecting run, one
-replaying run, ORCA and ARCA at common site); 1k-event pilot to re-profile
-CPU cost *before* the full queue; the full production at the WP8-D counts;
-strata + matching + export; GraphNeT dataset conversion; DynEdge inference
-with WP1 hooks; experiments E1–E5 with the *pre-registered* Tier-1 predictions
-(§5) tested once.
+cluster submission from `prometheus_config_pairs` — one injecting run with
+the **injection cylinder sized against ARCA, the larger geometry** (D1 caveat
+b), one replaying run, both at common site; a **1k-event pilot** that (a)
+re-profiles CPU cost and (b) measures the realized match rate of the WP0
+matching spec against the overproduced clean pool *before* the full queue;
+the full production at the `counts` numbers; strata + matching + export;
+GraphNeT dataset conversion; DynEdge inference with WP1 hooks; **E0** (E-fault
+gate), **E1** detection (power at 1 % FAR, delay), **E2** attribution on
+matched cells + abstention on U1–U4, **E3** cost on DynEdge, **E4** C4
+observational (conditional-on-alarm AUROC on angular error within severity
+strata), **E5** the pre-registered prediction table tested once.
+**Gate for the Tier-2 confirmatory run**: the D5 CPU-vs-GPU re-inference test
+is run first; if the 0.944° offset persists it must be shown stable across
+severity strata on dev data (the proposal's own gate condition), otherwise the
+offset is a confound on K and E4 does not run. This is stricter than
+`EXPERIMENT_DESIGN.md`'s earlier sequencing, which gated only quoted NuBench
+numbers; angular error as K makes the inference path part of the experiment.
 AC: pilot reproduces exactly on rerun (water/olympus); provenance columns
-complete for 100 % of events; matched cells achieve ≥ 90 % match rate inside
-the caliper (else overproduction factor is raised and recorded); E5 reports,
-per (monitor, family), the pre-registered prediction and the outcome, with no
-post-hoc additions to the prediction table.
+complete for 100 % of events; the pilot match rate is ≥ 90 % inside the
+caliper, else the overproduction factor is raised and the change recorded
+before production; E5 reports per (monitor, family, severity) the registered
+prediction and the outcome, scored as one summary statistic, with no rows
+added, removed or reworded.
 
 ### WP10 — Tier-3 (TIDMAD) · 3 d · deps: WP1–WP6
 
@@ -292,8 +380,10 @@ the monitor contrast between arms is reported with CIs.
 ### WP11 — Paper assembly · ongoing
 
 Each figure/table in `latex/` names the experiment id and `RESULT.md` it comes
-from; a script regenerates every figure from `results/confirmatory/`; the
-proposal's E-matrix is replaced by the realized one.
+from (the WP7 sidecar); a script regenerates every figure from
+`results/confirmatory/` and CI fails if any sidecar is missing or dev-sourced;
+the proposal's E-matrix is replaced by the realized one; refuted predictions
+appear in the paper text, not only in `RESULT.md`.
 
 ---
 
@@ -301,34 +391,47 @@ proposal's E-matrix is replaced by the realized one.
 
 | Milestone | Contents | Gate to pass |
 |---|---|---|
-| **M0** | WP0 draft, WP7 skeleton | §A review: no blockers |
+| **M0** | WP0 `core` written and **frozen**; WP7 skeleton | §A review: no blockers; `core` hash recorded |
 | **M1** | WP1, WP2, WP3 with analytic tests | all AC green; positive-control ladders monotone |
-| **M2** | cov_B (first citable result), WP4–WP6 | sign prediction pre-registered, then confirmed or refuted — either is reportable |
-| **M3** | cov_D → freeze counts; cov_A, cov_C | `PREREGISTRATION.md` hash frozen; prediction table (§5) filled |
-| **M4** | WP9 pilot + production, WP10 | pilot exact-replay check; D5 both halves before any released-NuBench number |
-| **M5** | E1–E5 run **once** in confirmatory mode | §B review: no blockers |
-| **M6** | WP11 | every figure traces to a confirmatory `RESULT.md` |
+| **M2** | cov_B confirmatory (depends on `core` only), WP4–WP6 | cov_B's K-prediction registered in `core` *before* the run; confirmed or refuted — either is reportable |
+| **M3** | cov_D → freeze `counts`; cov_A, cov_C, cov_E; fill and freeze `bridge` | `counts` and `bridge` hashes recorded |
+| **M4** | WP9 pilot (cost + match rate) + production, WP10; D5 test | pilot exact-replay check; D5 resolved or offset shown stable across strata |
+| **M5** | E0–E5 run **once** in confirmatory mode | §B review: no blockers |
+| **M6** | WP11 | every figure traces to a confirmatory `RESULT.md` via sidecar |
 
-Nothing in M4–M5 starts before M3's hash is frozen. That ordering is the
+Nothing in M4–M5 starts before `bridge` is frozen. That ordering is the
 scientific content of the design, not a project-management preference.
+
+**Schedule reality.** WP0–WP10 sum to ~40 focused engineering days on a
+near-linear dependency chain, with `oracle_diag`, `prometheus_io` and the
+§3.2 reimplementation all from scratch. Plan on **4–6 calendar months**. If
+it has to shrink, cut in this order: (1) the second geometry (keep ORCA only;
+keep the bridge on N/S families — the layout claim moves to future work);
+(2) cov_E / C5; (3) WP10's `K_rel`, keeping only the two-Σ̂ monitor contrast.
 
 ---
 
 ## 5. The pre-registration bridge (filled at M3, tested at M5)
 
 For each monitor in the frozen set and each ORACLE-Paired family, one row,
-written *before* any Tier-2 data is looked at:
+written *before* any Tier-2 data is looked at, with a **decision rule that two
+readers score identically** **[A-B10]**:
 
-| Monitor | Family | Predicted at 1 % FAR | Basis (Tier-1 result) |
-|---|---|---|---|
-| Euclidean displacement (pooled) | N1 module loss 25 % | fires | cov_C, N ladder |
-| Euclidean displacement (pooled) | S1 low-energy (matched to N1) | fires — **false attribution** | cov_C: content confound |
-| Jacobian-projected (pooled) | S1 low-energy | quiet | cov_B: output-null analogue |
-| … | … | … | … |
+| Monitor | Family | Severity | Stratum | Endpoint | Threshold | Direction | Basis |
+|---|---|---|---|---|---|---|---|
+| Euclidean displacement (pooled) | N1 module loss | 25 % | all | power at 1 % FAR | ≥ 0.80 | fires | cov_C N ladder |
+| Euclidean displacement (pooled) | S1 low-E, matched to N1@25 % | — | matched | power at 1 % FAR | ≥ 0.80 | fires (**false attribution**) | cov_C content confound |
+| Jacobian-projected (pooled) | S1 low-E, matched to N1@25 % | — | matched | power at 1 % FAR | ≤ 0.10 | quiet | cov_B |
+| … | … | … | … | … | … | … | … |
 
-The E5 result is the confusion between this table and the outcome, with no
-rows added afterwards. A monitor that predicts out-of-sample failures in a
-testbed it never saw is the referee-proof form of every claim in the paper.
+Rows whose outcome is analytic by construction (`is_analytic_for`) are marked
+and excluded from the summary statistic. The E5 result is **one number**: the
+fraction of non-analytic rows whose outcome matches the registered direction
+at the registered threshold, with a binomial 95 % CI, plus the full table. No
+row may be added, removed or reworded after `bridge` is frozen; the git
+history of the file is part of the evidence. A monitor that predicts
+out-of-sample failures in a testbed it never saw is the strongest form these
+claims can take.
 
 ---
 
@@ -341,3 +444,28 @@ testbed it never saw is the referee-proof form of every claim in the paper.
 - The pre-registration table has a recorded outcome for every row.
 - Negative or equivocal results are in the paper with their equivalence
   margins, not in a drawer.
+
+---
+
+## 7. Scope decisions forced by the §A review — for the collaboration
+
+1. **C5 is patching-only.** The claim ladder keeps C5 (stage localization) but
+   tests it by activation patching alone (cov_E). LoRA repair — the "diagnosed
+   stage adapts better than a wrong stage" experiment — is out of scope for
+   this paper. Reason: it had no work package, Hase et al. make adaptation
+   gains a weak validator anyway, and it is first on any cut list.
+2. **D5 gates Tier-2 confirmatory, not just quoted numbers.** Because angular
+   error is the consequence variable, an unexplained 0.9° offset in the
+   inference path is a confound on K. The CPU-vs-GPU test runs before E4, and
+   if the offset persists it must be shown stable across severity strata.
+3. **The proposal's Phase 2 must change from SPINE to Panda** to match D3
+   (`paper3_proposal.tex` still says "SPINE/Graph-SPICE transfer").
+4. **Deployability is claimed narrowly.** Tier 2 shows transfer to a testbed
+   and model the mechanism tier never saw, on declared families; it does not
+   show deployability against undeclared real shifts. The abstention endpoint
+   on U1–U4 is what supports the weaker statement, and the paper says so.
+5. **"Licence-clean" is conditional** on no NuBench artifact or released
+   parameter set entering the production. Our §3.2 uses the paper's stated
+   values and two declared assumptions (TTS window, noise rate); nothing is
+   read from NuBench files. Record this in the dataset README, and still ask
+   GraphNeT for a licence on their artifacts.

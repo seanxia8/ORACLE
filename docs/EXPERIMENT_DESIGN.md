@@ -62,21 +62,25 @@ every claim.
 
 ## Claims × tiers
 
+One claim ladder, the proposal's (`IMPLEMENTATION_PLAN.md` WP0):
+
 | Claim | Tier 1 ORACLE-Cov | Tier 2 ORACLE-Paired | Tier 3 TIDMAD |
 |---|---|---|---|
-| C1 detection @1% FAB | controlled families; power sizing (D6) | frozen DynEdge, matched cells | smoke check |
-| C2 N/S attribution + localization | full control | matched cells; geometry-transfer of the layer profile | — |
-| C3 abstention | held-out families | U1–U4 | — |
-| C4 alarm ranks consequence | **designed**: output-null vs output-aligned, sign predicted; κ sweep | **observational**: conditional-on-alarm AUROC on angular error | K_rel across the two Σ̂ trainings |
-| C5 repair | activation patching first, then LoRA | replication | — |
+| C1 detection @1% FAR | controlled families; power sizing (cov_D) | E1 on frozen DynEdge, matched cells | — |
+| C2 attribution N vs matched-clean (primary), N vs S (secondary), **with abstention on U** | cov_C: full control; held-out U families | E2: matched cells; U1–U4; geometry-transfer of the layer profile (E5) | — |
+| C3 cost (capture vs sample/sketch) | cov_C on the compact transformer | E3 on DynEdge | — |
+| C4 alarm ranks consequence, conditional on alarm | **designed**: output-null vs output-aligned — K prediction registered, monitor ranking partly by construction; κ sweep (cov_A, cov_B) | **observational**: E4, conditional-on-alarm AUROC on angular error within severity strata | K_rel across the two Σ̂ trainings (T1) |
+| C5 stage localization, by activation patching only | cov_E | replication on E2's consequential cells | — |
 
 ## Sequencing
 
 1. Tier 1 now (includes the D6 null simulation — the only place it can run).
-2. Tier 2 production in parallel — it is *not* gated by the 0.944° parity
-   blocker, which concerns released NuBench checkpoints on released NuBench
-   data; only claims quoting NuBench's own numbers are gated (D5, both
-   halves, before any such claim or any email to the NuBench authors).
+2. Tier 2 *production* in parallel — building the dataset is not gated by
+   anything. The Tier 2 *confirmatory run* is gated by D5: because angular
+   error is the consequence variable, the 0.944° re-inference offset is a
+   confound on K until the CPU-vs-GPU test resolves it or it is shown stable
+   across severity strata (`IMPLEMENTATION_PLAN.md` §7.2). Quoted NuBench
+   numbers and any email to the authors wait for both halves of D5.
 3. Everything else — Panda, LIGO, MicroBooNE, JUNO, FASER — is one sentence of
    future work each. Ten testbeds against an unwritten diagnostics layer is
    the project's largest schedule risk.
