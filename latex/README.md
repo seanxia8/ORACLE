@@ -1,6 +1,6 @@
 # Paper 3 LaTeX proposal
 
-`paper3_proposal.tex` builds the three-page collaboration concept note
+`paper3_proposal.tex` builds the collaboration concept note (five pages after the 2 September 2026 mechanism section)
 **Consequence-Aware Failure Diagnostics for Learned Particle-Reconstruction
 Representations**.
 

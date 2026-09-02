@@ -4,6 +4,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{microtype}
+\usepackage{amsmath,amssymb}
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{array}
@@ -93,9 +94,15 @@ geometry through the inverse covariance: the correct residual weighting is
 $\Sigma^{-1}$, and a model evaluated under the wrong weighting can prefer
 reconstructions that are worse in the metric the instrument implies.
 Architecture and training coverage further determine which physically relevant
-distinctions survive into the representation. This study asks whether
-violations of these assumptions can be diagnosed after training, and whether a
-detected violation is scientifically consequential. The artifact is a
+distinctions survive into the representation~\cite{paper1}. This study asks
+whether violations of these assumptions can be diagnosed after training, and
+whether a detected violation is scientifically consequential. The question has
+become concrete: cross-modality frozen backbones now exist --- Panda~V2 is
+pre-trained with one recipe on LArTPC, collider-TPC and water-Cherenkov data
+and adapted with $10^3$ labels per detector~\cite{panda2} --- and their authors
+list transfer across detectors and from simulation to real data as untested.
+Those are exactly the acquisition-shift and support-shift questions posed
+here, on a frozen public model. The artifact is a
 reproducible experiment suite---configurations, adapters, hooks, replay
 scripts, and reports---not a maintained software product.
 
@@ -134,11 +141,90 @@ violations of the measurement model. S is defined by physically valid,
 uncorrupted events that occupy low-density regions of the clean training
 support. The scientific problem is therefore not whether the input changed, but
 whether the change reflects corrupted measurement or valid but under-supported
-physics. That distinction is what matters operationally: discarding S rejects
+physics. Section~\ref{sec:mechanism} states why the two leave different
+geometric signatures in a frozen representation, which is what makes N versus
+S a prediction rather than a label. That distinction is what matters operationally: discarding S rejects
 physically valid events, whereas rejecting N removes measurements that violate
 the declared acquisition contract.
 
+\section{Mechanism: what a frozen representation can resolve}
+\label{sec:mechanism}
+
+Write the declared forward model as $x=g(z)+n$, $n\sim\mathcal N(0,\Sigma)$,
+with $z\in\mathbb R^m$ the physical latent variables (energy, direction,
+vertex, multiplicity, \ldots) and $J_g(z)=\partial g/\partial z$. Three
+first-order statements, each decided on the controlled tier where $g$,
+$\Sigma$ and $z$ are all known, turn the N and S labels into predictions.
+
+\textbf{Consequence is distance in the pullback metric.} For fixed $\Sigma$
+the Fisher information of $z$ is exactly
+$I(z)=J_g(z)^{\!\top}\Sigma^{-1}J_g(z)$: the Gaussian likelihood pulls the
+$\Sigma^{-1}$ inner product back onto latent space, and
+$\delta z^{\top}I(z)\,\delta z$ measures a latent perturbation in
+detector-distinguishability units --- how far it moves the observation relative
+to what the noise can resolve~\cite{paper1}. The same construction through a
+frozen model's output map $h$ gives $J_h^{\top}\Sigma^{-1}J_h$ on any
+intermediate representation. An unweighted Euclidean displacement in
+representation space is therefore the wrong-metric statistic; the
+consequence-relevant alarm is the displacement in the $\Sigma^{-1}$-whitened
+metric pulled back through the output Jacobian (the \emph{pullback-whitened}
+statistic of Tier~1), and its $\Sigma$-free surrogate is the projection of the
+displacement onto the leading right-singular directions of the output Jacobian
+(the \emph{Jacobian-projected} statistic used on Tier~2). The output-null and
+output-aligned arms of Section~\ref{sec:claims} are built from the same
+Jacobian, which is why their predicted sign is a consequence of this metric
+and not a free parameter.
+
+\textbf{Support shift lives in the unexcited tangent complement.} Training
+varies only the latent coordinates $S\subseteq\{1,\dots,m\}$ that the
+simulation or calibration procedure excites. In the population limit the
+reconstruction objective supplies first-order identifying information only
+along $T_S(z)=\operatorname{span}\{\Sigma^{-1/2}\partial g/\partial z_j : j\in S\}$;
+the complementary directions are never tested by the loss --- exactly in the
+linear case, and locally for nonlinear $g$ by the same Jacobian argument.
+Whatever the frozen model does along $T_S^{\perp}$ was selected by its
+architecture and initialization, not by the data. A support shift --- clean
+events whose latent coordinates move into strata the training never excited
+--- therefore produces a whitened observation displacement
+$\Sigma^{-1/2}\big(g(z')-g(z)\big)$ whose leading component lies in
+$T_S^{\perp}$, where the model's Jacobian carries no trained sensitivity. Where
+$\operatorname{rank} I(z)<m$ the latent variables are not even locally
+identifiable at $z$, for any decoder capacity; strata in which this rank drops
+are declared abstention regions, not attribution failures.
+
+\textbf{Acquisition shift lives in the excited span.} An acquisition violation
+changes the noise, $\Sigma\to\Sigma'$ or $\Sigma+\Sigma_{\mathrm{art}}$, and
+leaves $g$ unchanged. Its signature is a whitened residual whose per-direction
+variance departs from unity by the spectrum of $\hat\Sigma^{-1}\Sigma'$, spread
+over the directions the training did excite, because that is where the
+encoder's assumed $\hat\Sigma$ was doing work. This is the mechanistic
+asymmetry the monitors are designed to read: N moves the residual \emph{within}
+$T_S$; S moves the representation \emph{along} $T_S^{\perp}$. A generic
+input-shift statistic records only that something moved.
+
+\textbf{Layerwise monitors.} For stage maps $r_{\ell+1}=\phi_\ell(r_\ell)$ with
+Jacobian $A_\ell(x)=\partial\phi_\ell/\partial r_\ell$, let $Q_{\ell,k}(x)$ be
+an orthonormal basis of the top-$k$ right-singular vectors of $A_\ell(x)$. Two
+gauge-safe statistics are recorded per stage: the dominant-subspace alignment
+$a_{\ell,k}(x,x')=k^{-1}\|Q_{\ell,k}(x)^{\top}Q_{\ell,k}(x')\|_F^{2}$, equal to
+one for identical subspaces and decreasing as they rotate, reported within and
+across event strata; and, for each declared factor $h$, a contrastive
+direction $v_{\ell,h}\propto\mathbb E[r_\ell\mid h{+}\Delta h]-\mathbb E[r_\ell\mid h]$
+built from matched interventions, whose alignment with the clean-stratum
+dominant subspace is the attribution feature. Both depend on subspaces and
+input--output sensitivities, never on raw coordinates, so they are invariant
+under the reparameterizations a trained network is free to choose. Together
+they are the layerwise sensitivity profile of C2. The prediction frozen on
+Tier~1 before any Tier-2 run is that N-family cells rotate $Q_{\ell,k}$ at the
+stages nearest the input and place $v_{\ell,\mathrm N}$ inside the clean
+dominant subspace, whereas S-family cells leave early-stage alignment near one
+and place $v_{\ell,\mathrm S}$ outside it. Activation interventions
+$r_\ell\mapsto r_\ell+\alpha v_{\ell,h}$ then test whether a candidate
+direction causally moves the intended physics coordinate, which is the
+patching check that precedes any repair experiment.
+
 \section{Claims}
+\label{sec:claims}
 
 \textbf{C1---Detection.} At a 1\% false-alert rate on nominal, non-overlapping
 windows, the best monitoring signature detects at least 80\% of held-out abrupt
@@ -226,8 +312,9 @@ displacement along the local output Jacobian's null space; large alarm,
 $\approx$\,zero consequence) and a norm-matched \emph{output-aligned} arm
 (same displacement magnitude along the leading right-singular directions;
 large consequence). A monitor that ranks by unweighted Euclidean displacement
-fails this pair by construction; a Jacobian- and $\Sigma^{-1}$-aware alarm
-passes. This converts C4 from a correlation into a designed test with a
+fails this pair by construction; the pullback-whitened alarm of
+Section~\ref{sec:mechanism} passes, because the two arms differ precisely in
+their length under $J_h^{\top}\Sigma^{-1}J_h$. This converts C4 from a correlation into a designed test with a
 predicted sign and gives every magnitude-only baseline a failure mode it
 cannot escape.
 
@@ -288,8 +375,9 @@ comparison.
 named-layer moments or sketches, outputs, uncertainty, delayed task metrics,
 and calibration. A regularized logistic classifier is fitted with identical
 splits to five arms: input only; output/uncertainty; final embedding only; all
-generic-monitor outputs; and the full layerwise signature. The fourth is the
-honest strong baseline, committed to in advance. Eligible baselines ---
+generic-monitor outputs; and the full layerwise signature (the alignment and contrastive-direction
+statistics of Section~\ref{sec:mechanism} at every hooked stage). The fourth
+is the honest strong baseline, committed to in advance. Eligible baselines ---
 corrected univariate input tests, RBF-MMD~\cite{gretton2012}, a classifier
 two-sample test~\cite{lopezpaz2017}, embedding mean/covariance distance, output
 tests, uncertainty/entropy --- receive identical windows and false-alert
@@ -375,7 +463,8 @@ water vs.\ ice) is reported only as a distribution-level consistency
 comparison, never a causal layout claim.
 
 \textbf{Phase 2 (A): Panda scale transfer.} On one frozen public Panda
-checkpoint (pip-installable, auto-downloading data; SPINE remains the later
+checkpoint (pip-installable, auto-downloading data; the cross-modality Panda~V2
+backbone~\cite{panda2} once its weights are released; SPINE remains the later
 domain-specific extension), test one physically justified perturbation and one
 point-representation metric against the released reconstruction endpoints.
 
@@ -500,6 +589,13 @@ Localization vs.\ Knowledge Editing in Language Models.'' NeurIPS (2023).
 S. Giner, C.~A. Arg\"uelles. ``Prometheus: An Open-Source Neutrino Telescope
 Simulation.'' Comput.\ Phys.\ Commun.\ (2024).
 \href{https://arxiv.org/abs/2304.14526}{arXiv:2304.14526}.
+\bibitem{paper1} D. Wong. ``Noise Covariance Defines Reconstruction
+Geometry: Optimal Filtering, Weighted Subspaces, and Tied Linear
+Autoencoders.'' Preprint (2026).
+\bibitem{panda2} S. Young, C. Jes\'us-Valls, K. Terao. ``Panda Diplomacy:
+Foundation Model Pre-training across Particle Imaging Detectors for High
+Energy and Nuclear Physics.''
+\href{https://arxiv.org/abs/2609.00611}{arXiv:2609.00611} (2026).
 \bibitem{tidmad} J. Fry, X. Fu, Z. Fu, K. Pappas, L. Winslow, A. Li.
 ``TIDMAD: Time-Series Dataset for Discovering Dark Matter with AI Denoising.''
 NeurIPS Datasets \& Benchmarks (2025).

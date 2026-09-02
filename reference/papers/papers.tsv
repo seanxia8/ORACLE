@@ -17,6 +17,7 @@
 2309.10157	prior_art	cms2023_ecal_autoencoder_dqm	CMS ECAL autoencoder anomaly detection
 2407.20278	prior_art	cms2024_ecal_autoencoder_dqm	CMS ECAL autoencoder DQM follow-up
 2105.08742	prior_art	ghosh2021_systematics_aware_training	Systematics-aware learning
+2609.00611	testbeds	young2026_panda_diplomacy	Young, Jesus-Valls & Terao, Panda Diplomacy: one pre-training recipe across LArTPC / collider TPC / water Cherenkov; V2 weights not yet released
 2512.01324	testbeds	young2025_panda	Young & Terao, Panda self-distilled sensor-level representations
 2511.13111	testbeds	nubench2026	NuBench neutrino-telescope benchmark
 2406.04378	testbeds	fry2024_tidmad	TIDMAD dark-matter denoising benchmark
