@@ -11,7 +11,7 @@ questions that ordinary distribution-shift detection does not answer:
 
 The project is currently a **proposal with a validated development pilot**, not
 a completed study or a production monitoring library. The main deliverable is
-the three-page concept note in [`latex/paper3_proposal.pdf`](latex/paper3_proposal.pdf).
+the concept note in [`latex/paper3_proposal.pdf`](latex/paper3_proposal.pdf).
 
 ## Study design
 
@@ -75,16 +75,19 @@ this repository.
 | `notebooks/` | Smoke/inference notebooks and the noise-module tutorials |
 | `scripts/` | Local/Condor training helpers and smoke tests |
 | `containers/` | Runtime container image definition |
-| `docs/` | Package documentation (`noise_module/`, `reconstruction_model.md`, `tidmad.md`) |
+| `docs/EXPERIMENT_DESIGN.md` | The agreed three-tier design (canonical short version) |
+| `docs/IMPLEMENTATION_PLAN.md` | Work packages, interfaces, acceptance criteria, gates |
+| `docs/REVIEW_PROMPTS.md` | Reviewer prompts (§A before implementation, §B per milestone); reviews land in `docs/reviews/` |
+| `docs/archive/` | Superseded documents: audit, open decisions, revision plan, dataset-production plan, novelty review, package docs (`noise_module/`, `reconstruction_model.md`, `tidmad.md`) |
 | `reference/` | Selected external training notes and legacy helper scripts |
 | `scripts/nubench/` | NuBench feasibility scripts (migrated 2026-08-17, post-audit) |
 | `results/` | Checked-in feasibility results with audit caveats |
-| `docs/PAPER3_AUDIT.md` | Adversarial audit of the proposal, repo and plan (2026-08-17) |
-| `docs/OPEN_DECISIONS.md` | Researched resolutions of the open technical decisions |
-| `docs/REVISION_PLAN.md` | Canonical shared execution plan (migrated 2026-08-23; see its banner for the audit conflicts still to reconcile) |
-| `docs/PERSONAL_RESEARCH_GUIDE.md` | Private working record and review log — **not for the shared view** |
+| `docs/archive/PAPER3_AUDIT.md` | Adversarial audit of the proposal, repo and plan (2026-08-17; archived) |
+| `docs/archive/OPEN_DECISIONS.md` | Researched resolutions of the open technical decisions (archived; superseded by `EXPERIMENT_DESIGN.md`) |
+| `docs/archive/REVISION_PLAN.md` | Earlier shared execution plan (migrated 2026-08-23; archived, superseded by `IMPLEMENTATION_PLAN.md`) |
+| `docs/archive/PERSONAL_RESEARCH_GUIDE.md` | Private working record and review log — **not for the shared view** |
 | `reference/papers/` | Prior-art and testbed PDFs, with the novelty analysis (`papers.tsv` is the manifest; the README has the fetch loop) |
-| `latex/paper3_proposal.tex` | Source for the three-page collaboration concept note |
+| `latex/paper3_proposal.tex` | Source for the collaboration concept note (five pages since the 2026-09-02 mechanism section) |
 | `latex/paper3_proposal.pdf` | Compiled proposal |
 | `latex/figures/` | Proposal figures |
 | `references.bib` | Working bibliography; the current proposal uses a self-contained bibliography in the TeX source |
@@ -190,7 +193,7 @@ The NuBench pilot scripts now live in [`scripts/nubench/`](scripts/nubench/)
 and the feasibility results (with post-audit caveats) in
 [`results/nubench_hexagon_ice_le_dynedge/`](results/nubench_hexagon_ice_le_dynedge/RESULT.md);
 both were migrated from the external research folder on 17 August 2026 with
-the audit fixes applied (`docs/PAPER3_AUDIT.md`, C11–C17).
+the audit fixes applied (`docs/archive/PAPER3_AUDIT.md`, C11–C17).
 
 The large NuBench database, released prediction Parquet file, and model
 checkpoint are external artifacts and are not included in this repository.
@@ -237,4 +240,4 @@ downstream metric passes a predeclared tolerance.
 The parallel TIDMAD code path is locally validated on synthetic HDF5 fixtures.
 Its remaining blocking gate is the public-data smoke run because the large
 TIDMAD files are intentionally external; follow
-[`docs/tidmad.md`](docs/tidmad.md).
+[`docs/archive/tidmad.md`](docs/archive/tidmad.md).
