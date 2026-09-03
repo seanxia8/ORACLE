@@ -15,7 +15,35 @@ experiment repository with dev-scale results; nothing here is pre-registered or 
       to supporting; C3 as written fails at 10 % sampling on Tier 1.
 - [ ] Bibliography: `paper1` gets the arXiv id once posted; add Lu 2008 / Allen 2014 only if §3
       cites the separable class.
-- [ ] Rebuild and check the page count (currently five); README says five.
+- [x] Rebuild and check the page count — now six after the 2026-09-03 additions (positioning
+      paragraph, reporting standard, bridge sentence in E5, monitor-stack figure); README updated.
+- [ ] If a five-page limit applies for the collaboration note, drop the `fig:testbeds` panel (b)
+      or compress §7 roadmap — do not cut the reporting standard or the mechanism section.
+
+## Method standard adopted from Kieseler (2026-09-03; notes in the experiment repo
+`docs/background/KIESELER_METHOD_NOTES_2026-09.md`)
+Done today in the proposal: "Position relative to learned-geometry reconstruction" (GravNet,
+object condensation, Panda, the bias-aware physics-FM benchmark 2605.29283) in §1; "Reporting
+standard" paragraph in §5 (parameter-matched arms, resource row, inclusive + stratum metrics,
+threshold curves, extrapolation arm, hyperparameter table); Figure 1 monitor stack.
+- [ ] `PREREGISTRATION.md`: add the reporting standard as hard fields — per arm `n_params`,
+      `train_cost`, `infer_ms_per_event`, `mem_mb`; per endpoint inclusive + stratum; per
+      threshold a curve; one hyperparameter table.
+- [ ] Tier-1 `mlp_ae` vs `cwpca` vs `nfpa`: match parameter counts (review C1) before any
+      confirmatory run; report the resource row.
+- [ ] Tier 2: baseline is the *published* NuBench DynEdge configuration, not a reimplementation;
+      any in-project re-emulation of the detector response is validated against the released
+      per-geometry numbers (parity gate in `TIER2_RUNBOOK.md`).
+- [ ] Extrapolation arm on Tier 1: monitors calibrated on severities ≤ s_max, evaluated at
+      2 s_max and at the unseen family — report as its own row, not pooled.
+- [ ] Bridge table with identical metric names on both tiers (within-T_S residual variance,
+      along-T_S^⊥ displacement, abstention risk–coverage AUC, ρ(A,K)) — fill from the
+      confirmatory Tier-1 output.
+
+## Novelty positioning (2026-09-03 search; see `docs/NOVELTY_CHECK_2026-09-03.md`)
+- [ ] Re-run the search before submission: "frozen representation" + "covariance shift" +
+      detector; Panda follow-ups; NuBench follow-ups; any "diagnostics of foundation models in
+      physics" paper. Update the positioning paragraph if a mechanism-level diagnostic appears.
 
 ## Pre-registration (in the experiment repo, `docs/plans/oracle/PREREGISTRATION.md`)
 - [ ] Freeze `core` (endpoints, thresholds, families, margins) — write `FROZEN: <commit>`;

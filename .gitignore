@@ -65,3 +65,4 @@ training_job_summary.*.json
 #   python scripts/regenerate_reference_asd.py
 src/noise_module/data/*/*.dat
 src/noise_module/data/*/*.npy
+docs/_to_delete/

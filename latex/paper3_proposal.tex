@@ -9,6 +9,8 @@
 \usepackage{tabularx}
 \usepackage{array}
 \usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit}
 \usepackage{xcolor}
 \usepackage{enumitem}
 \usepackage[font=footnotesize,labelfont=bf]{caption}
@@ -105,6 +107,23 @@ Those are exactly the acquisition-shift and support-shift questions posed
 here, on a frozen public model. The artifact is a
 reproducible experiment suite---configurations, adapters, hooks, replay
 scripts, and reports---not a maintained software product.
+
+\textbf{Position relative to learned-geometry reconstruction.} The subjects
+of this study are models that \emph{learn} the geometry of the measurement:
+distance-weighted graph networks that place every sensor in a learned
+coordinate space~\cite{gravnet}, potential-based objectives that attach to
+each vertex a learned weight for whether it can represent its
+object~\cite{objcond}, and cross-detector pre-training
+recipes~\cite{panda2}. None of these carries a statement of what its
+representation can resolve once the acquisition or the physics moves; recent
+benchmarks of physics foundation models report regime-dependent scores across
+distribution shifts without a mechanism~\cite{fmbench}. The learned
+resolvability weight of object condensation is the closest relative of the
+Fisher-rank diagnostic of Section~\ref{sec:mechanism}, which computes the same
+quantity for a \emph{frozen} model from its Jacobian and the assumed
+covariance, with no training signal. Nothing here proposes a new
+reconstruction architecture; the contribution is the contract, the mechanism,
+and the designed data on which the contract can be falsified.
 
 \textbf{Identifiability limit.} Diagonalizing a covariance yields decorrelated
 statistical modes, not labeled physical sources: $\Sigma=\Sigma_1+\Sigma_2$
@@ -222,6 +241,46 @@ and place $v_{\ell,\mathrm S}$ outside it. Activation interventions
 $r_\ell\mapsto r_\ell+\alpha v_{\ell,h}$ then test whether a candidate
 direction causally moves the intended physics coordinate, which is the
 patching check that precedes any repair experiment.
+
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[
+  font=\scriptsize, node distance=3pt,
+  b/.style={draw, rounded corners=1.5pt, inner sep=2.5pt, minimum height=1.35em, align=center},
+  sub/.style={b, fill=gray!10}, mon/.style={b, fill=blue!7}, dec/.style={b, fill=orange!12},
+  arr/.style={-{Stealth[length=3.5pt]}, semithick}]
+  \node[sub] (x) {window $\{x_i\}$};
+  \node[sub, right=10pt of x] (r1) {$r_1$};
+  \node[sub, right=8pt of r1] (r2) {$\cdots$};
+  \node[sub, right=8pt of r2] (rL) {$r_L$};
+  \node[sub, right=10pt of rL] (h) {output $h$};
+  \draw[arr] (x)--(r1); \draw[arr] (r1)--(r2); \draw[arr] (r2)--(rL); \draw[arr] (rL)--(h);
+  \node[draw, dashed, rounded corners=2pt, inner sep=3pt, fit=(r1)(rL), label={[font=\scriptsize]above:frozen subject, hooked stages}] (frz) {};
+  \node[mon, below=9pt of r1, xshift=-8pt] (a) {$a_{\ell,k}$\\ alignment};
+  \node[mon, right=6pt of a] (v) {$v_{\ell,h}$\\ contrast};
+  \node[mon, right=6pt of v] (pb) {$J_h^{\top}\Sigma^{-1}J_h$\\ pullback};
+  \node[mon, right=6pt of pb] (fr) {rank $I(z)$\\ Fisher};
+  \draw[arr] (r1.south) -- (a.north); \draw[arr] (rL.south) -- (v.north);
+  \draw[arr] (h.south) -- (pb.north); \draw[arr] (h.south) -- (fr.north);
+  \node[dec, below=9pt of v, xshift=-4pt] (alarm) {alarm $A$};
+  \node[dec, right=6pt of alarm] (attr) {attribute N $\mid$ S};
+  \node[dec, right=6pt of attr] (abst) {abstain};
+  \node[dec, right=6pt of abst] (K) {consequence $K$};
+  \draw[arr] (a.south) -- (alarm.north); \draw[arr] (v.south) -- (attr.north);
+  \draw[arr] (fr.south) -- (abst.north); \draw[arr] (pb.south) -- (K.north);
+  \draw[arr, dashed] (alarm.east) -- (attr.west);
+  \draw[arr, dashed] (attr.east) -- (abst.west);
+\end{tikzpicture}
+\vspace{-0.4em}
+\caption{Monitor stack on a frozen subject. Hooked stages feed two gauge-safe
+layerwise statistics (alignment $a_{\ell,k}$, contrastive direction
+$v_{\ell,h}$); the output map feeds the pullback metric and the Fisher rank.
+Alarm, N/S attribution, abstention, and the consequence measure $K$ are
+separate endpoints with separate false-alert budgets, and every arrow is a
+pre-registered prediction on Tier~1 before Tier~2 runs.}
+\label{fig:stack}
+\vspace{-0.6em}
+\end{figure}
 
 \section{Claims}
 \label{sec:claims}
@@ -389,6 +448,19 @@ after development; intervals resample event groups and perturbation seeds
 separately; null results require a passed positive control, adequate precision,
 and a predeclared equivalence margin.
 
+\textbf{Reporting standard.} Every learned arm and baseline is reported with
+its parameter count, training cost, and inference time and memory per event,
+and arms compared against each other are matched in parameter count, not in
+tuning effort. Every endpoint is reported inclusively and on the stratum where
+the methods are predicted to differ (highest severity, lowest SNR, boundary
+support), under the same metric names on every tier. Every threshold ---
+alarm, attribution, abstention --- is reported as a curve at the
+pre-registered false-alert budget (risk--coverage for abstention), never as a
+single operating point. Each learned ladder contains an extrapolation arm
+trained inside and evaluated outside the declared severity and multiplicity
+range, labelled as such. The hyperparameters of every method appear in one
+table with the values used.
+
 \begin{figure*}[!t]
   \centering
   \begin{minipage}[b]{0.43\textwidth}
@@ -437,7 +509,9 @@ E3 & Capture vs sample/sketch & p50/p95 latency; bytes/event; power/F1 loss \\
 E4 & Alarm vs consequence (C4) & $\rho(A,K)$; AUROC for $K\geq\kappa_m$;
 off-diagonal rates \\
 E5 & Paired-geometry transfer & Pre-registered Tier-1 failure predictions
-tested once on ORACLE-Paired; layer-profile stability across geometries \\
+tested once on ORACLE-Paired under the same metric names (bridge table:
+within-$T_S$ residual variance under N, along-$T_S^{\perp}$ displacement under
+S, abstention AUROC, $\rho(A,K)$); layer-profile stability across geometries \\
 \bottomrule
 \end{tabularx}
 \label{tab:experiments}
@@ -596,6 +670,17 @@ Autoencoders.'' Preprint (2026).
 Foundation Model Pre-training across Particle Imaging Detectors for High
 Energy and Nuclear Physics.''
 \href{https://arxiv.org/abs/2609.00611}{arXiv:2609.00611} (2026).
+\bibitem{gravnet} S.~R. Qasim, J. Kieseler, Y. Iiyama, M. Pierini.
+``Learning representations of irregular particle-detector geometry with
+distance-weighted graph networks.'' Eur.\ Phys.\ J.\ C 79, 608 (2019).
+\href{https://arxiv.org/abs/1902.07987}{arXiv:1902.07987}.
+\bibitem{objcond} J. Kieseler. ``Object condensation: one-stage grid-free
+multi-object reconstruction in physics detectors, graph and image data.''
+Eur.\ Phys.\ J.\ C 80, 886 (2020).
+\href{https://arxiv.org/abs/2002.03605}{arXiv:2002.03605}.
+\bibitem{fmbench} M. Chu, Y. Liu, A. Biswas, H.-W. Shen. ``Do Physics Foundation Models Learn Generalizable Physics?
+A Bias-Aware Benchmark Across Physical Regimes and Distribution Shifts.''
+\href{https://arxiv.org/abs/2605.29283}{arXiv:2605.29283} (2026).
 \bibitem{tidmad} J. Fry, X. Fu, Z. Fu, K. Pappas, L. Winslow, A. Li.
 ``TIDMAD: Time-Series Dataset for Discovering Dark Matter with AI Denoising.''
 NeurIPS Datasets \& Benchmarks (2025).
