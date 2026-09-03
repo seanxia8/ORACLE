@@ -3,6 +3,20 @@
 Stage: proposal has its mechanism section (`0793eba`); Tier-1 implementation lives in the
 experiment repository with dev-scale results; nothing here is pre-registered or citable yet.
 
+## Theme adjustment 2026-09-03 (`docs/THEME_ADJUSTMENT_2026-09-03.md`)
+Paper 3 is the main paper: *what determines which representation a detector model learns, and
+what it lets a physicist reconstruct*.  Done today in the proposal: new title, abstract opening,
+"The question" paragraph in §1 with Panda as the foil, mechanism §3 attributed to Paper 1
+Props. 7.2–7.3, new claim **C0** (physical-variable organisation), E0b row, measurement-system
+breadth sentence in §5.  Build 6 pp.
+- [ ] **Junjie must see and agree** the new title and C0 before anything is frozen; the
+      failure-diagnostics content is unchanged, the framing is not.
+- [ ] Fold the three Tier-1 findings (below) and the P3-E0b dev result into §3–§4.
+- [ ] Consequence in physical units per tier stated in one table (amplitude RMSE; angular
+      resolution; exclusion limit) — the closing box of the chain.
+- [ ] C0 into `PREREGISTRATION.md` §4 (experiment repo) with the acceptance rule; probe step into
+      `TIER2_RUNBOOK.md` (NuBench labels) and `TIER3_RUNBOOK.md` (injected amplitude).
+
 ## Proposal (`latex/paper3_proposal.tex`)
 - [ ] Fold the three Tier-1 findings of `docs/DEV_UPDATE_2026-09-03.md` into §3 and §4:
       (i) three-signature N/S table (covariance N: variance in T_S; signal-deforming N: mean

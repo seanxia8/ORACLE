@@ -21,8 +21,8 @@
 
 \hypersetup{colorlinks=true,linkcolor=blue!40!black,citecolor=blue!40!black,
   urlcolor=blue!50!black,
-  pdftitle={Consequence-Aware Failure Diagnostics for Learned
-            Particle-Reconstruction Representations},
+  pdftitle={What a Frozen Detector Representation Resolves: Measurement
+            Geometry, Training Support, and Consequence-Aware Diagnosis},
   pdfauthor={Dowling Wong}}
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{1.0pt}
@@ -31,20 +31,28 @@
 \titleformat{\section}{\small\bfseries}{\thesection}{0.4em}{}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 
-\title{\vspace{-1.55em}\textbf{Consequence-Aware Failure Diagnostics\\[-0.18em]
-for Learned Particle-Reconstruction Representations}\\[-0.12em]
-\normalsize Collaboration concept note}
+\title{\vspace{-1.55em}\textbf{What a Frozen Detector Representation Resolves:\\[-0.18em]
+Measurement Geometry, Training Support, and Consequence-Aware Diagnosis}\\[-0.12em]
+\normalsize Collaboration concept note (formerly \emph{Consequence-aware failure diagnostics for learned particle-reconstruction representations})}
 \author{Dowling Wong}
-\date{31 August 2026}
+\date{3 September 2026}
 
 \begin{document}
 \maketitle
 \vspace{-1.9em}
 
 \begin{abstract}
-A monitor on a deployed reconstruction model must answer two questions that
-average accuracy does not: which declared mechanism caused an alarm, and what
-scientific consequence followed. We propose a replay-based diagnosis of frozen
+What determines which representation a detector model learns, and what does
+that representation let a physicist reconstruct? For a calibrated readout the
+representation is determined by three things --- the metric the measurement
+fixes, the class the architecture fixes, and the latent support the training
+excites~\cite{paper1}. A frozen model therefore carries a contract, and its
+failures are the determinants moving: the realised covariance departing from
+the assumed one, or clean physics arriving outside the excited support. We
+turn that into a testable programme on frozen public models. A monitor on a
+deployed reconstruction model must answer two questions that average accuracy
+does not: which declared mechanism caused an alarm, and what scientific
+consequence followed. We propose a replay-based diagnosis of frozen
 representations under controlled interventions, organised as three tiers with
 one direction of travel --- mechanism, realism, real data. A controlled
 waveform simulator in which both the assumed covariance $\hat\Sigma$ entering
@@ -63,10 +71,29 @@ transformer trained under two covariance assumptions on identical data.
 Layerwise evidence is compared against input tests, MMD, classifier two-sample
 tests, embedding distance, uncertainty, and output-only monitoring at a
 matched false-alert budget, with abstention on families the study never
-declared.
+declared. On every tier, linear probes from the hooked representation to the
+physical variables the tier defines ask whether the representation is
+organised by physics and whether that organisation survives each failure; the
+consequence is reported in physical units --- amplitude, angular resolution,
+exclusion limit --- on three physically different measurement systems.
 \end{abstract}
 
 \section{Gap and contribution}
+
+\textbf{The question.} Cross-detector pre-training has shown that one
+sensor-level recipe learns useful representations on three physically
+different detectors, that those representations cut supervision by orders of
+magnitude, and that linear probes find physics in them~\cite{panda2}. That
+answers how general a \emph{recipe} can be. It does not say why a
+representation takes the form it does, or when it stops resolving the physics
+it was trained on. The companion theory~\cite{paper1} gives the determinants
+for a calibrated readout: the measurement fixes the metric $\Sigma^{-1}$, the
+architecture fixes the admissible class, and the training data fix the
+excited latent support; the wrong metric learns the wrong physical structure
+on planted data. This study asks the deployment half of the same question on
+frozen models: \emph{which determinant moved, is the physics still resolved,
+and does it matter} --- with the determinants supplying the predictions rather
+than a list of failure modes.
 
 Existing shift monitors can detect changes in inputs, outputs, or embeddings,
 but a scientific reconstruction pipeline requires two additional distinctions:
@@ -172,7 +199,9 @@ the declared acquisition contract.
 Write the declared forward model as $x=g(z)+n$, $n\sim\mathcal N(0,\Sigma)$,
 with $z\in\mathbb R^m$ the physical latent variables (energy, direction,
 vertex, multiplicity, \ldots) and $J_g(z)=\partial g/\partial z$. Three
-first-order statements, each decided on the controlled tier where $g$,
+first-order statements --- the first two are Propositions~7.2--7.3 of the
+companion paper~\cite{paper1}, restated here in the form the monitors use;
+the third is this study's --- each decided on the controlled tier where $g$,
 $\Sigma$ and $z$ are all known, turn the N and S labels into predictions.
 
 \textbf{Consequence is distance in the pullback metric.} For fixed $\Sigma$
@@ -285,6 +314,20 @@ pre-registered prediction on Tier~1 before Tier~2 runs.}
 \section{Claims}
 \label{sec:claims}
 
+\textbf{C0---Physical-variable organisation.} On every tier, ridge probes
+from each hooked representation to the physical variables that tier defines
+(Tier~1: amplitude, rise and decay time, the planted latent; Tier~2: energy,
+zenith, azimuth, vertex; Tier~3: the injected amplitude) are fitted on clean
+training windows and scored on held-out events; per variable we report probe
+$R^2$ and the effective number of representation axes it occupies. The
+determinants predict the pattern: $R^2$ is high only for variables whose
+directions lie in the excited span; N-family cells degrade the probes of
+excited variables while their axes stay put; S-family cells expose variables
+whose probes were never there. C0 is the Panda-style probe~\cite{panda2}
+carried into the contract, and it is the endpoint that says whether ``the
+latent space contains physics'' is a property of the recipe or a consequence
+of the determinants.
+
 \textbf{C1---Detection.} At a 1\% false-alert rate on nominal, non-overlapping
 windows, the best monitoring signature detects at least 80\% of held-out abrupt
 and gradual N/S shifts within five windows, and is non-inferior to the
@@ -378,6 +421,12 @@ predicted sign and gives every magnitude-only baseline a failure mode it
 cannot escape.
 
 \section{Testbeds and monitoring design}
+
+The three tiers are three physically different measurement systems ---
+cryogenic-style waveforms with a calibrated covariance, neutrino-telescope
+point clouds with no covariance at all, and a SQUID time series with recorded
+truth --- under one principle. Generality is claimed across measurement
+regimes, not across architectures.
 
 \textbf{Tier 2 --- neutrino-telescope point clouds (realism:
 ORACLE-Paired).} One primary public configuration with a released checkpoint.
@@ -493,7 +542,7 @@ table with the values used.
 
 \begin{center}
 \scriptsize
-\captionof{table}{Core experiment matrix. C1--C3 run on both testbeds; C4 is
+\captionof{table}{Core experiment matrix. C0--C3 run on both testbeds; C4 is
 primary on waveforms.}
 \begin{tabularx}{\columnwidth}{@{}p{0.16in}p{0.95in}Y@{}}
 \toprule
@@ -501,6 +550,8 @@ ID & Test & Primary endpoints \\
 \midrule
 E0 & Clean replay; deliberate E faults & Reference discrepancy; gate
 sensitivity/specificity \\
+E0b & Physical-variable probes (C0) & Probe $R^2$ and axis participation per
+variable; predicted pattern across clean / N / S cells \\
 E1 & Held-out abrupt/gradual N/S & Power at 1\% false alert; AUROC/AUPRC;
 delay in windows \\
 E2 & N/S attribution, mixtures, unseen family & Macro/multi-label F1 over
