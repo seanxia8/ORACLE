@@ -408,7 +408,14 @@ def main() -> None:
                          "shipped in data/geofiles/")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--n-events", type=int, default=None,
-                    help="override n_events (use a small value for a smoke test)")
+                    help="total events across all injection points (rounded down "
+                         "to a whole number per point). Use a small value for a "
+                         "smoke test.")
+    ap.add_argument("--arms", default=None,
+                    help="comma-separated arm names to run, e.g. "
+                         "flower_s,flower_l. Default: all. The injection is "
+                         "always built for the FULL plan, so a subset stays "
+                         "paired with a later full run.")
     ap.add_argument("--execute", action="store_true",
                     help="actually run Prometheus; without it only the plan is written")
     ap.add_argument("--arm", default=None,
@@ -438,19 +445,43 @@ def main() -> None:
         return
 
     if a.n_events:
-        params.n_events = a.n_events
+        # n_events is derived (events_per_point x len(injection_points)) and is
+        # read-only; set the thing it derives from.
+        per = max(1, a.n_events // len(params.injection_points))
+        if per * len(params.injection_points) != a.n_events:
+            print(f"--n-events {a.n_events} is not divisible by "
+                  f"{len(params.injection_points)} injection points; using "
+                  f"{per} per point = {per * len(params.injection_points)} total")
+        params.events_per_point = per
+    wanted = [s.strip() for s in a.arms.split(",")] if a.arms else None
     gpus = [int(g) for g in a.gpus.split(",")] if a.gpus else None
     parallel = a.execute and (a.jobs > 1 or gpus)
 
     # In parallel mode, inject once here and let the dispatcher run the arms.
-    p = build_event_set(params, geodir, a.out, a.execute and not parallel)
+    if wanted:
+        known = {x["arm"] for x in plan(params, geodir, a.out)["arms"]}
+        unknown = [w for w in wanted if w not in known]
+        if unknown:
+            raise SystemExit(f"unknown arm(s) {unknown}; known: {sorted(known)}")
+
+    p = build_event_set(params, geodir, a.out,
+                        a.execute and not parallel and not wanted)
+    if wanted and a.execute and not parallel:
+        injection, lic = prepare_injection(params, p, geodir, a.out)
+        for arm in p["arms"]:
+            if arm["arm"] not in wanted:
+                continue
+            print(f"--- arm {arm['arm']} ({arm['role']}, medium={arm['medium']}) ---")
+            run_arm(arm, params, injection, lic, geodir, a.out)
     if parallel:
         p = build_event_set(params, geodir, a.out, execute=False)
         prepare_injection(params, p, geodir, a.out)
         print(f"injection written and pinned: {p['injection_sha256'][:16]}  "
               f"vertex residual {p['vertex_residual_max_m']:.3e} m")
         print(GPU_ENV_NOTE)
-        rc = dispatch_arms(a.out, [x["arm"] for x in p["arms"]], gpus,
+        arm_names = [x["arm"] for x in p["arms"]
+                     if wanted is None or x["arm"] in wanted]
+        rc = dispatch_arms(a.out, arm_names, gpus,
                            max(a.jobs, len(gpus) if gpus else 1))
         bad = {k: v for k, v in rc.items() if v != 0}
         if bad:
