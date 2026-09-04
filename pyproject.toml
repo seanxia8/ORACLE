@@ -9,6 +9,7 @@ dependencies = []
 members = [
     "src/noise_module",
     "src/oracle_paired",
+    "src/prometheus_simulation",
     "src/qp_simulator",
     "src/reconstruction_model",
     "src/tidmad_transformer",

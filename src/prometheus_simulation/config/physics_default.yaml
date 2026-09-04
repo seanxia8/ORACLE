@@ -1,0 +1,65 @@
+# ONE event set: three fixed injection points, one energy, isotropic direction,
+# replayed through all six geometries plus an ice control and a photon null.
+#
+# Tags: nubench = stated in arXiv:2511.13111 | ours = our choice |
+#       ask = NOT published; our value is a declared deviation.
+# Each run prints its `ask` list at the end -- that list is the paper's
+# declared-deviations section.
+
+final_state_1: MuMinus
+final_state_2: Hadrons
+interactions: [CC, NC]
+
+# Single energy, not a spectrum. 10 TeV: bright enough that the sparse
+# geometries (flower_xl, ~90 m spacing) trigger reliably, not so bright that
+# the small dense ones saturate. Sampling a spectrum would make every arm's
+# error a mixture over energy and confound the geometry comparison.
+energy_gev: 10000.0            # 10 TeV (written in full: PyYAML reads 1.0e4 as a STRING)
+power_law: 1.0            # inert while the energy is fixed
+
+# Isotropic: directional acceptance is one of the largest geometry effects
+# (3 strings vs a hexagonal array), so fixing the direction would hide it.
+min_zenith_deg: 0.0
+max_zenith_deg: 180.0
+min_azimuth_deg: 0.0
+max_azimuth_deg: 360.0
+
+# Detector-relative, applied after recentring, so a point means the same thing
+# in every geometry. MUST stay inside the common region -- radius <= 57.7 m
+# (set by `triangle`), |z| <= 95.4 m (set by `flower_s`). simulate.plan()
+# refuses to run if a point falls outside even one geometry.
+injection_points:
+  centre:   [0.0, 0.0, 0.0]      # on axis, mid-depth
+  radial:   [40.0, 0.0, 0.0]     # 69% of the common radius
+  vertical: [0.0, 0.0, 70.0]     # 73% of the common half-height
+
+events_per_point: 200            # 600 events total
+is_ranged: false
+endcap_length_m: 500.0
+earth_model: null
+
+injection_seed: 20260904
+photon_seed: 1
+
+datasets: [flower_s, flower_l, flower_xl, triangle, cluster, hexagon]
+include_ice_control: true
+
+provenance:
+  final_state_1: nubench
+  final_state_2: nubench
+  interactions: nubench
+  energy_gev: ours
+  power_law: ask
+  min_zenith_deg: ask
+  max_zenith_deg: ask
+  min_azimuth_deg: ask
+  max_azimuth_deg: ask
+  injection_points: ours
+  events_per_point: ours
+  is_ranged: ours
+  endcap_length_m: ask
+  earth_model: ask
+  injection_seed: ours
+  photon_seed: ours
+  datasets: ours
+  include_ice_control: ours
