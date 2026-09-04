@@ -129,6 +129,24 @@ what selects PPC (ice) vs olympus (water).
    LeptonInjector weights do not transfer across arms. Report **unweighted,
    per-event, truth-referenced** metrics only.
 
+## A structural limit of the medium control
+
+Prometheus selects the photon propagator from the **medium**: olympus (JAX) for
+water, PPC for ice. So `hexagon` vs `hexagon_ice_le` — the "medium-only"
+control — also changes the propagation *implementation*, and cannot separate
+medium from propagator on its own.
+
+This is structural, not a configuration choice: PPC is ice-specific (south-pole
+ice tables), so water cannot be routed through it. State it as a limitation
+rather than working around it. Within PPC, the CPU and CUDA binaries are two
+builds of the same algorithm, so `use_gpu` changes the build but not the
+family — verify they agree on a small sample before relying on it.
+
+**The six water arms are unaffected.** They all run olympus, so the geometry
+comparison — the actual experiment — is like-for-like. Only the control carries
+this caveat. Each arm writes `arm_record.json` naming the propagator it
+actually used, and `analyze.py` prints the table and the caveat in REPORT.md.
+
 ## Upstream quirks we work around
 
 `external/prometheus` is LGPL-2.1 and pinned, so nothing there is patched.

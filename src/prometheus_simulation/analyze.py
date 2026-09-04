@@ -197,6 +197,13 @@ def main() -> int:
     _style()
 
     truth, hits, plan = load_event_set(a.run)
+    propagators = {}
+    for x in plan["arms"]:
+        rec = a.run / x["arm"] / "arm_record.json"
+        if rec.exists():
+            propagators[x["arm"]] = json.loads(rec.read_text()).get("propagator")
+        else:
+            propagators[x["arm"]] = x.get("propagator_family")
     arms = [x["arm"] for x in plan["arms"] if x["role"] == "geometry"]
     points = list(plan.get("injection_points", {})) or sorted(truth["point"].unique())
 
@@ -245,6 +252,18 @@ def main() -> int:
         f"- vertices on the injection points: **{gates['vertices_on_points']}** "
         + (f"(max residual {vres})" if vres is not None
            else "(NOT RECORDED — gate cannot be satisfied)"),
+        "", "## Photon propagator per arm", "",
+        "| arm | medium | propagator |", "|---|---|---|",
+        *[f"| {x['arm']} | {x['medium']} | {propagators.get(x['arm'], '?')} |"
+          for x in plan["arms"]],
+        "",
+        "**Caveat on the medium control.** Prometheus selects the propagator "
+        "from the medium — olympus (JAX) for water, PPC for ice — so the "
+        "water-vs-ice control changes the propagation *implementation* as well "
+        "as the medium, and cannot separate the two on its own. This is "
+        "structural, not a configuration choice: PPC is ice-specific. State it "
+        "as a limitation. The six water arms are unaffected — they all run "
+        "olympus, so the geometry comparison is like-for-like.",
         "", "## Per geometry", "", by_arm.round(3).to_markdown(),
         "", "## Per geometry x injection point", "", by_point.round(3).to_markdown(),
         "", "## Light yield", "", ly.round(3).to_markdown(index=False),

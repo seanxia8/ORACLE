@@ -80,12 +80,16 @@ def plan(params: PhysicsParameters, geodir: Path, out: Path) -> dict:
             "n_strings": g.n_strings,
             "r_horizontal_m": g.r_horizontal,
             "photon_seed": params.photon_seed,
+            # Prometheus picks the propagator from the MEDIUM: olympus (JAX)
+            # for water, PPC for ice. So the medium control is also a
+            # propagator change -- see the caveat in analyze.py.
+            "propagator_family": "ppc" if NUBENCH_MEDIA[key] == "ice" else "olympus",
             "role": "geometry",
         })
     if params.include_ice_control and "hexagon" in geoms:
         arms.append({**arms[[a["arm"] for a in arms].index("hexagon")],
                      "arm": "hexagon_ice_le", "medium": "ice",
-                     "role": "medium_control"})
+                     "propagator_family": "ppc", "role": "medium_control"})
     # The pairing null: the REFERENCE geometry re-run with the same events and
     # a different photon seed. This is the scale in which every cross-geometry
     # displacement is reported -- run it first, at reduced N.
@@ -273,6 +277,19 @@ def run_arm(arm: dict, params: PhysicsParameters, injection: Path, lic: Path,
         oly = config.photon_propagator.olympus.simulation
         oly.max_distance = params.olympus_max_distance_m
         oly.photon_chunk = params.olympus_photon_chunk
+
+    # Which propagator actually ran is provenance, not a detail: the medium
+    # control compares an olympus arm against a PPC arm, and within PPC the
+    # CPU and CUDA binaries are different builds of the same algorithm.
+    (arm_dir / "arm_record.json").write_text(json.dumps({
+        "arm": arm["arm"],
+        "role": arm["role"],
+        "medium": arm["medium"],
+        "propagator": config.photon_propagator.name or "olympus",
+        "use_gpu": bool(params.use_gpu),
+        "photon_seed": arm["photon_seed"],
+        "olympus_max_distance_m": params.olympus_max_distance_m,
+    }, indent=2))
     Prometheus().sim()
 
 
