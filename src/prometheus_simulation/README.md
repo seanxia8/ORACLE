@@ -129,6 +129,24 @@ what selects PPC (ice) vs olympus (water).
    LeptonInjector weights do not transfer across arms. Report **unweighted,
    per-event, truth-referenced** metrics only.
 
+## Upstream quirks we work around
+
+`external/prometheus` is LGPL-2.1 and pinned, so nothing there is patched.
+Two behaviours are compensated for in `simulate.run_arm` instead:
+
+- **`ppc.paths.force` does not make a re-run safe.** `prometheus.py` guards the
+  PPC tmpdir with `if tmpdir.exists() and not force: raise
+  PpcTmpdirExistsError`, then calls `mkdir(parents=True, exist_ok=False)`
+  unconditionally — so `force` only converts a typed error into a raw
+  `FileExistsError`. A `--arm <name>` retry after a crash or OOM would fail on
+  the leftover directory instead of resuming. We remove it first.
+- **The default tmpdir is `./.ppc_tmp`, relative to the working directory,** so
+  concurrent ice arms would share one scratch directory. Each arm now gets its
+  own under its output directory.
+
+`tests/test_ppc_tmpdir.py` pins both, including a retry over a leftover
+directory as the regression guard.
+
 ## Hardware
 
 Two independent GPU paths, neither on by default. Seven of the eight arms are

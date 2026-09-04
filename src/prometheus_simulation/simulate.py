@@ -241,11 +241,31 @@ def run_arm(arm: dict, params: PhysicsParameters, injection: Path, lic: Path,
         # PPC (g++, CPU) vs ppc_cuda (nvcc). install.sh --with-ppc builds only
         # the CPU one; the CUDA binary comes from container/Dockerfile.gpu or
         # `make gpu arch=<SM>` in resources/PPC_executables/PPC_CUDA.
+        #
+        # Two problems with the shipped tmpdir handling, both fixed here rather
+        # than by patching external/prometheus (LGPL, pinned by commit):
+        #
+        # 1. `force` does NOT make a re-run safe. prometheus.py guards with
+        #    `if tmpdir.exists() and not force: raise PpcTmpdirExistsError`,
+        #    then calls `mkdir(exist_ok=False)` unconditionally -- so force
+        #    only converts a typed error into a raw FileExistsError. A
+        #    `--arm hexagon_ice_le` retry after a crash or an OOM would fail on
+        #    the leftover directory instead of resuming. We remove it first.
+        # 2. The default tmpdir is `./.ppc_tmp`, relative to the working
+        #    directory, so two ice arms running concurrently would share one
+        #    scratch directory and corrupt each other. Only hexagon_ice_le is
+        #    ice today, which is the only reason this has not bitten; giving
+        #    each arm its own tmpdir removes the latent trap.
+        ppc_tmp = arm_dir / ".ppc_tmp"
+        if ppc_tmp.exists():
+            shutil.rmtree(ppc_tmp)          # Prometheus mkdirs it with exist_ok=False
         if params.use_gpu:
             config.photon_propagator.name = "ppc_cuda"
+            config.photon_propagator.ppc_cuda.paths.ppc_tmpdir = str(ppc_tmp)
             config.photon_propagator.ppc_cuda.paths.force = True
         else:
             config.photon_propagator.name = "PPC"
+            config.photon_propagator.ppc.paths.ppc_tmpdir = str(ppc_tmp)
             config.photon_propagator.ppc.paths.force = True
     else:
         # Water -> olympus (JAX). It runs on the GPU only if a CUDA jaxlib is
