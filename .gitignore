@@ -70,6 +70,6 @@ docs/_to_delete/
 # Prometheus clone (LGPL-2.1 upstream, ~70 MB incl. PPC/PROPOSAL tables) and
 # simulation outputs. Fetch the clone with
 #   bash src/prometheus_simulation/fetch_prometheus.sh
-src/prometheus_simulation/external/
+src/prometheus_simulation/external
 src/prometheus_simulation/runs/
 runs/
