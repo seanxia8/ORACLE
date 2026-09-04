@@ -64,7 +64,7 @@ radius ≤ 57.7 m (set by `triangle`), |z| ≤ 95.4 m (set by `flower_s`).
 Run this first — it needs nothing but numpy/pandas/h5py/awkward/pyarrow/pytest:
 
 ```bash
-PYTHONPATH=src python -m pytest src/prometheus_simulation/tests/ -q   # 11 tests
+PYTHONPATH=src python -m pytest src/prometheus_simulation/tests/ -q   # 50 tests
 ```
 
 They need no Prometheus clone: the geofiles are read from
@@ -133,6 +133,13 @@ Seven of eight arms are water, so **the JAX path is the one that matters**.
   after the install to get the GPU. Verify with
   `python -c "import jax; print(jax.devices())"` — if that prints
   `[CpuDevice(id=0)]` you are on the CPU.
+
+  **Install `cuda12`, never `cuda13`.** JAX on CUDA 12 supports SM 5.2
+  (Maxwell) and newer; on CUDA 13 the floor rises to SM 7.5, which drops
+  Maxwell entirely. On an older card that is the difference between the GPU
+  working and not, and the failure looks like an unsupported-device error
+  rather than anything about wheels. CUDA 12 also needs driver >= 525 on
+  Linux.
 - **Ice / PPC.** `install.sh --with-ppc` runs `make cpu` (g++) **only**. The
   CUDA binary is built by `container/Dockerfile.gpu` or manually with
   `make gpu arch=<SM>` in `resources/PPC_executables/PPC_CUDA`. **`SM_ARCH`

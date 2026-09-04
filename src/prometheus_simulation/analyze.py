@@ -158,6 +158,34 @@ def _figures(df, ly, effect, arms, points, out_dir, energy):
         plt.close(fig)
 
 
+def evaluate_gates(pairing: pd.DataFrame, plan: dict) -> "tuple[dict, list[str]]":
+    """The two gates, and any messages explaining a failure.
+
+    A gate that passes when the evidence is ABSENT is not a gate. An earlier
+    parallel run path omitted ``vertex_residual_max_m`` from plan.json and this
+    treated the omission as a pass, so the check was vacuous exactly where it
+    was least likely to be noticed. Missing evidence now fails.
+    """
+    vres = plan.get("vertex_residual_max_m")
+    gates = {
+        "all_arms_paired": bool(pairing.paired.all()),
+        "vertices_on_points": (vres is not None) and (float(vres) < 1e-6),
+    }
+    msgs = []
+    if vres is None:
+        msgs.append(
+            "GATE vertices_on_points: FAILED - plan.json has no "
+            "vertex_residual_max_m, so it is unknown whether the vertices "
+            "landed on the injection points. Regenerate with a version that "
+            "records it (simulate.prepare_injection always does).")
+    elif not gates["vertices_on_points"]:
+        msgs.append(f"GATE vertices_on_points: FAILED - residual {vres} m")
+    if not gates["all_arms_paired"]:
+        bad = pairing.loc[~pairing.paired, "arm"].tolist()
+        msgs.append(f"GATE all_arms_paired: FAILED - arms {bad}")
+    return gates, msgs
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--run", type=Path, required=True)
@@ -175,10 +203,9 @@ def main() -> int:
     pairing = check_pairing(truth, plan)
     pairing.to_csv(out_dir / "pairing.csv", index=False)
     vres = plan.get("vertex_residual_max_m")
-    gates = {
-        "all_arms_paired": bool(pairing.paired.all()),
-        "vertices_on_points": (vres is None) or (float(vres) < 1e-6),
-    }
+    gates, gate_msgs = evaluate_gates(pairing, plan)
+    for m in gate_msgs:
+        print(m, file=sys.stderr)
 
     df = recon.reconstruct(truth, hits, min_hits=a.min_hits)
     by_arm = recon.summarise(df, min_hits=a.min_hits)
@@ -209,7 +236,8 @@ def main() -> int:
         "", "## Gates", "",
         f"- all arms paired: **{gates['all_arms_paired']}**",
         f"- vertices on the injection points: **{gates['vertices_on_points']}** "
-        f"(max residual {vres})",
+        + (f"(max residual {vres})" if vres is not None
+           else "(NOT RECORDED — gate cannot be satisfied)"),
         "", "## Per geometry", "", by_arm.round(3).to_markdown(),
         "", "## Per geometry x injection point", "", by_point.round(3).to_markdown(),
         "", "## Light yield", "", ly.round(3).to_markdown(index=False),

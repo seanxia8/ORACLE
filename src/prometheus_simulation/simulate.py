@@ -256,6 +256,40 @@ def run_arm(arm: dict, params: PhysicsParameters, injection: Path, lic: Path,
     Prometheus().sim()
 
 
+def prepare_injection(params: PhysicsParameters, plan_d: dict, geodir: Path,
+                      out: Path) -> "tuple[Path, Path]":
+    """Inject once, place the vertices, and record the provenance.
+
+    ONE function for both the serial and the parallel path. They used to do
+    this separately and the parallel copy silently omitted
+    ``vertex_residual_max_m`` -- which analyze.py then treated as a pass, so
+    running in parallel made the `vertices_on_points` gate vacuously true. A
+    gate that can only be satisfied by one of two code paths is not a gate, so
+    the duplication is removed rather than the second copy patched.
+
+    Returns (injection_file, lic_file) and updates ``plan_d`` in place.
+    """
+    inj_dir = out / "_injection"
+    injection = inject_once(params, plan_d, geodir, inj_dir)
+    lics = sorted(inj_dir.glob("*.lic"))
+    if not lics:
+        raise FileNotFoundError(f"no .lic file produced in {inj_dir}")
+
+    # Place every vertex on its assigned point, in the REFERENCE frame.
+    ref_offset = np.asarray(plan_d["reference_offset_m"])
+    wanted = np.array([np.asarray(params.injection_points[n])
+                       for n in plan_d["event_point_assignment"]])
+    applied = set_vertices(injection, ref_offset + wanted)
+    achieved = read_vertices(injection) - ref_offset
+
+    plan_d["vertex_shift_max_m"] = float(np.abs(applied).max())
+    plan_d["vertex_residual_max_m"] = float(np.abs(achieved - wanted).max())
+    plan_d["injection_file"] = str(injection)
+    plan_d["injection_sha256"] = _sha256(injection)
+    (out / "plan.json").write_text(json.dumps(plan_d, indent=2))
+    return injection, lics[0]
+
+
 GPU_ENV_NOTE = """\
 JAX preallocates ~75% of a GPU by default, which fails immediately when another
 process already holds part of the card (and on this box GPU 0 usually does).
@@ -320,29 +354,11 @@ def build_event_set(params: PhysicsParameters, geodir: Path, out: Path,
     if not execute:
         return plan_d
 
-    inj_dir = out / "_injection"
-    injection = inject_once(params, plan_d, geodir, inj_dir)
-    lics = sorted(inj_dir.glob("*.lic"))
-    if not lics:
-        raise FileNotFoundError(f"no .lic file produced in {inj_dir}")
-
-    # Place every vertex on its assigned point, in the REFERENCE frame.
-    ref_offset = np.asarray(plan_d["reference_offset_m"])
-    targets = np.array([ref_offset + np.asarray(params.injection_points[n])
-                        for n in plan_d["event_point_assignment"]])
-    applied = set_vertices(injection, targets)
-    plan_d["vertex_shift_max_m"] = float(np.abs(applied).max())
-    achieved = read_vertices(injection) - ref_offset
-    plan_d["vertex_residual_max_m"] = float(np.abs(
-        achieved - np.array([params.injection_points[n]
-                             for n in plan_d["event_point_assignment"]])).max())
-    plan_d["injection_file"] = str(injection)
-    plan_d["injection_sha256"] = _sha256(injection)
-    (out / "plan.json").write_text(json.dumps(plan_d, indent=2))
+    injection, lic = prepare_injection(params, plan_d, geodir, out)
 
     for arm in plan_d["arms"]:
         print(f"--- arm {arm['arm']} ({arm['role']}, medium={arm['medium']}) ---")
-        run_arm(arm, params, injection, lics[0], geodir, out)
+        run_arm(arm, params, injection, lic, geodir, out)
     return plan_d
 
 
@@ -393,16 +409,9 @@ def main() -> None:
     p = build_event_set(params, geodir, a.out, a.execute and not parallel)
     if parallel:
         p = build_event_set(params, geodir, a.out, execute=False)
-        inj_dir = a.out / "_injection"
-        injection = inject_once(params, p, geodir, inj_dir)
-        ref_offset = np.asarray(p["reference_offset_m"])
-        targets = np.array([ref_offset + np.asarray(params.injection_points[n])
-                            for n in p["event_point_assignment"]])
-        set_vertices(injection, targets)
-        p["injection_file"] = str(injection)
-        p["injection_sha256"] = _sha256(injection)
-        (a.out / "plan.json").write_text(json.dumps(p, indent=2))
-        print(f"injection written and pinned: {p['injection_sha256'][:16]}")
+        prepare_injection(params, p, geodir, a.out)
+        print(f"injection written and pinned: {p['injection_sha256'][:16]}  "
+              f"vertex residual {p['vertex_residual_max_m']:.3e} m")
         print(GPU_ENV_NOTE)
         rc = dispatch_arms(a.out, [x["arm"] for x in p["arms"]], gpus,
                            max(a.jobs, len(gpus) if gpus else 1))
