@@ -235,8 +235,21 @@ def run_arm(arm: dict, params: PhysicsParameters, injection: Path, lic: Path,
     config.injection.lepton_injector.paths.injection_file = str(local_inj)
     config.injection.lepton_injector.paths.lic_file = str(lic)
     if arm["medium"] == "ice":
-        config.photon_propagator.name = "PPC"
-        config.photon_propagator.ppc.paths.force = True
+        # PPC (g++, CPU) vs ppc_cuda (nvcc). install.sh --with-ppc builds only
+        # the CPU one; the CUDA binary comes from container/Dockerfile.gpu or
+        # `make gpu arch=<SM>` in resources/PPC_executables/PPC_CUDA.
+        if params.use_gpu:
+            config.photon_propagator.name = "ppc_cuda"
+            config.photon_propagator.ppc_cuda.paths.force = True
+        else:
+            config.photon_propagator.name = "PPC"
+            config.photon_propagator.ppc.paths.force = True
+    else:
+        # Water -> olympus (JAX). It runs on the GPU only if a CUDA jaxlib is
+        # installed; there is no config switch for that.
+        oly = config.photon_propagator.olympus.simulation
+        oly.max_distance = params.olympus_max_distance_m
+        oly.photon_chunk = params.olympus_photon_chunk
     Prometheus().sim()
 
 

@@ -78,6 +78,28 @@ class PhysicsParameters:
     endcap_length_m: float = 500.0          # ask (inert in volume mode)
     earth_model: str | None = None          # ask -- not published
 
+    # --- photon propagation backend ---------------------------------------
+    # Two INDEPENDENT GPU paths, and neither is on by default:
+    #   water (olympus) is JAX -- needs `pip install "jax[cuda12]"`; the jax
+    #     pinned in requirements.txt is the CPU build, so a GPU box silently
+    #     runs on CPU until that is installed.
+    #   ice (PPC) needs the separately compiled PPC_CUDA binary. install.sh
+    #     --with-ppc builds `make cpu` ONLY; the CUDA binary comes from
+    #     container/Dockerfile.gpu or a manual `make gpu arch=<SM>`.
+    # Seven of our eight arms are water, so the JAX path is the one that
+    # matters most; only hexagon_ice_le uses PPC.
+    use_gpu: bool = False                   # ours
+
+    # olympus `max_distance`: source-module pairs beyond this are dropped
+    # BEFORE propagation. Its own docstring says this "changes physics, not
+    # just memory" -- it is not a tuning knob. At 300 m in water it is many
+    # absorption lengths and defensible, but it means a central event in
+    # flower_xl (r = 1950 m) only ever illuminates the inner ~300 m, so the
+    # cross-geometry light-yield comparison is really comparing local string
+    # density near the vertex. State that rather than raising it.
+    olympus_max_distance_m: float = 300.0   # ours
+    olympus_photon_chunk: int = 2 ** 18     # ours -- pure memory; lower on a small GPU
+
     # --- run ---------------------------------------------------------------
     injection_seed: int = 20260904          # ours -- ONE seed for the shared set
     photon_seed: int = 1                    # ours -- vary for the pairing null
@@ -98,6 +120,8 @@ class PhysicsParameters:
         "injection_points": "ours", "events_per_point": "ours",
         "is_ranged": "ours",
         "endcap_length_m": "ask", "earth_model": "ask",
+        "use_gpu": "ours", "olympus_max_distance_m": "ours",
+        "olympus_photon_chunk": "ours",
         "injection_seed": "ours", "photon_seed": "ours",
         "datasets": "ours", "include_ice_control": "ours",
     })
@@ -123,7 +147,8 @@ class PhysicsParameters:
         plausible-looking config can silently deliver a string into the
         simulation. Coerce the numeric fields rather than trusting the file."""
         for name in ("energy_gev", "power_law", "min_zenith_deg", "max_zenith_deg",
-                     "min_azimuth_deg", "max_azimuth_deg", "endcap_length_m"):
+                     "min_azimuth_deg", "max_azimuth_deg", "endcap_length_m",
+                     "olympus_max_distance_m"):
             v = getattr(self, name)
             if v is not None:
                 setattr(self, name, float(v))

@@ -38,6 +38,25 @@ is_ranged: false
 endcap_length_m: 500.0
 earth_model: null
 
+# Photon propagation backend. TWO INDEPENDENT GPU PATHS, neither on by default:
+#   water (7 of our 8 arms) -> olympus, which is JAX. Uses the GPU only if a
+#     CUDA jaxlib is installed (`pip install "jax[cuda12]"`); requirements.txt
+#     pins the CPU build, so a GPU box silently runs on CPU until you do.
+#   ice (hexagon_ice_le only) -> PPC. install.sh --with-ppc builds `make cpu`
+#     ONLY; the CUDA binary comes from container/Dockerfile.gpu (which needs
+#     SM_ARCH matching the card: 89 Ada/L40S/4090, 80 A100, 75 Turing) or a
+#     manual `make gpu arch=<SM>`.
+use_gpu: false
+
+# olympus max_distance: source-module pairs beyond this are dropped BEFORE
+# propagation. Prometheus' own docstring: "changes physics, not just memory".
+# NOT a tuning knob. 300 m in water is many absorption lengths and defensible,
+# but it means a central event in flower_xl (r = 1950 m) only illuminates the
+# inner ~300 m -- so the cross-geometry light-yield comparison is comparing
+# local string density near the vertex. Declare that; do not raise it.
+olympus_max_distance_m: 300.0
+olympus_photon_chunk: 262144      # pure memory; lower on a small GPU
+
 injection_seed: 20260904
 photon_seed: 1
 
@@ -59,6 +78,9 @@ provenance:
   is_ranged: ours
   endcap_length_m: ask
   earth_model: ask
+  use_gpu: ours
+  olympus_max_distance_m: ours
+  olympus_photon_chunk: ours
   injection_seed: ours
   photon_seed: ours
   datasets: ours

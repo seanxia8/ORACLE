@@ -129,6 +129,24 @@ what selects PPC (ice) vs olympus (water).
    LeptonInjector weights do not transfer across arms. Report **unweighted,
    per-event, truth-referenced** metrics only.
 
+## Hardware
+
+Two independent GPU paths, neither on by default. Seven of the eight arms are
+**water** → olympus (JAX), which uses the GPU only if a CUDA `jaxlib` is
+installed — `requirements.txt` pins the CPU build, so a GPU box runs on the CPU
+silently. One arm (`hexagon_ice_le`) is **ice** → PPC, whose CUDA binary
+`install.sh --with-ppc` does *not* build (`make cpu` only); use
+`container/Dockerfile.gpu` or `make gpu arch=<SM>`, and match `SM_ARCH` to the
+card. `use_gpu: true` switches only the ice arm.
+
+CPU is a legitimate way to run this: ~1.5–13 CPU-hours for the full set,
+parallel over arms.
+
+`olympus_max_distance_m` (300 m) is **physics, not memory** — it drops
+source-module pairs before propagation, so a central event in `flower_xl`
+(r = 1950 m) illuminates only the inner ~300 m. Lower `olympus_photon_chunk`
+for memory instead.
+
 ## Recorded physics
 
 Every parameter carries a provenance tag — `nubench` (stated in

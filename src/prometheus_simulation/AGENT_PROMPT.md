@@ -116,6 +116,51 @@ python examples/02_basic_ice.py     # 3 events, demo ice geometry, PPC, CPU
 If that fails, **stop and report the error**. Do not work around it, do not
 substitute another photon propagator, do not drop the ice arm.
 
+## Hardware — CPU is fine, GPU is faster, and neither is automatic
+
+Prometheus has **two independent GPU paths**, and the default install uses
+neither. Our eight arms split across both:
+
+| arm | medium | propagator | GPU path |
+|---|---|---|---|
+| the six geometries + `flower_xl__seed2` null | water | **olympus** (JAX) | a CUDA `jaxlib` |
+| `hexagon_ice_le` | ice | **PPC** | the separately compiled `PPC_CUDA` binary |
+
+Seven of eight arms are water, so **the JAX path is the one that matters**.
+
+- **Water / olympus.** `requirements.txt` pins the **CPU** jax. On a GPU box it
+  will run on the CPU and say nothing about it. `pip install "jax[cuda12]"`
+  after the install to get the GPU. Verify with
+  `python -c "import jax; print(jax.devices())"` — if that prints
+  `[CpuDevice(id=0)]` you are on the CPU.
+- **Ice / PPC.** `install.sh --with-ppc` runs `make cpu` (g++) **only**. The
+  CUDA binary is built by `container/Dockerfile.gpu` or manually with
+  `make gpu arch=<SM>` in `resources/PPC_executables/PPC_CUDA`. **`SM_ARCH`
+  must match the card** — 89 for Ada/L40S/4090, 80 for A100, 75 for Turing; a
+  mismatch fails at run time, not build time.
+- Set `use_gpu: true` in `config/physics_default.yaml` once the CUDA PPC binary
+  exists. It switches the ice arm to `ppc_cuda`. It does **not** affect the
+  water arms — nothing in the config controls those; only which jaxlib is
+  installed does.
+- Out of GPU memory on the water arms: lower `olympus_photon_chunk` (pure
+  memory, results unchanged). **Do not touch `olympus_max_distance_m`** — see
+  below.
+
+**CPU is a legitimate way to run this.** 600 events x 8 arms at 1-10 CPU-s each
+is roughly 1.5-13 CPU-hours, embarrassingly parallel over arms. Use a GPU if
+you have one; do not block on getting one.
+
+### One knob that is physics, not memory
+
+`olympus_max_distance_m` (default 300 m) drops source-module pairs beyond it
+**before** propagation. Prometheus' own docstring says it "changes physics, not
+just memory". At 300 m in water it is many absorption lengths and defensible,
+but it means a central event in `flower_xl` (r = 1950 m) only ever illuminates
+the inner ~300 m. That is a real property of the comparison — the light-yield
+numbers compare local string density near the vertex, not whole-detector size —
+and it must be stated, not tuned away. If you raise it, you have changed the
+experiment; say so loudly.
+
 ## Step 0 — dry run, no simulation
 
 ```bash
