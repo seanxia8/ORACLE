@@ -269,8 +269,8 @@ def survey(geodir: str | Path, names: list[str] | None = None) -> None:
 def default_geodir() -> Path:
     """Where to read the .geo files from.
 
-    Prefers the Prometheus clone when it is present, and falls back to the
-    copies `oracle_paired` ships as package data — so the geometry survey, the
+    Prefers the Prometheus clone when present, and falls back to the copies
+    shipped as package data in `data/geofiles/` — so the geometry survey, the
     plan and the whole test suite work with no clone at all. Only actually
     running Prometheus needs `fetch_prometheus.sh`.
     """
@@ -278,12 +278,12 @@ def default_geodir() -> Path:
     clone = here / "external" / "prometheus" / "resources" / "geofiles"
     if clone.is_dir():
         return clone
-    vendored = here.parent / "oracle_paired" / "data" / "geofiles"
+    vendored = here / "data" / "geofiles"
     if vendored.is_dir():
         return vendored
     raise FileNotFoundError(
         "No geofiles found. Run src/prometheus_simulation/fetch_prometheus.sh, "
-        "or place .geo files in src/oracle_paired/data/geofiles/.")
+        "or place .geo files in src/prometheus_simulation/data/geofiles/.")
 
 
 if __name__ == "__main__":

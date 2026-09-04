@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "prometheus-simulation"
 version = "0.1.0"
-description = "Cross-geometry event generation: one Prometheus injection replayed through every NuBench geometry, with the recentring the naive replay omits"
+description = "ORACLE-Paired dataset production: one Prometheus injection replayed (and recentred) through every NuBench geometry, NuBench-style detector response, N/S/U strata, matching and provenance export"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -24,4 +24,4 @@ packages = ["prometheus_simulation"]
 prometheus_simulation = "."
 
 [tool.setuptools.package-data]
-prometheus_simulation = ["config/*.yaml"]
+prometheus_simulation = ["config/*.yaml", "data/geofiles/*.geo", "data/geofiles/README.md"]

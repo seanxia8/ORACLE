@@ -8,12 +8,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from oracle_paired.interventions import (
+from prometheus_simulation.interventions import (
     GainDrift, HitThinning, ModuleLoss, NoiseRateScale, TimingJitter,
     apply_interventions,
 )
-from oracle_paired.response import ResponseConfig, emulate_response
-from oracle_paired.toy import toy_track
+from prometheus_simulation.response import ResponseConfig, emulate_response
+from prometheus_simulation.toy import toy_track
 
 CFG = ResponseConfig(noise_rate_per_om_us=0.001)
 

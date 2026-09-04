@@ -23,7 +23,7 @@ from dataclasses import dataclass, replace
 import numpy as np
 
 from .events import EventPhotons, EventPulses
-from .geometry import DetectorGeometry
+from .detector import DetectorGeometry
 
 
 @dataclass(frozen=True)

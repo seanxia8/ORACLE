@@ -7,9 +7,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from oracle_paired.events import EventPhotons
-from oracle_paired.response import ResponseConfig, emulate_response
-from oracle_paired.toy import toy_track
+from prometheus_simulation.events import EventPhotons
+from prometheus_simulation.response import ResponseConfig, emulate_response
+from prometheus_simulation.toy import toy_track
 
 
 def test_deterministic_under_seed(geometry):

@@ -14,8 +14,8 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2]  # .../src
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
-from oracle_paired.geometry import DetectorGeometry  # noqa: E402
-from oracle_paired.toy import toy_population  # noqa: E402
+from prometheus_simulation.detector import DetectorGeometry  # noqa: E402
+from prometheus_simulation.toy import toy_population  # noqa: E402
 
 
 @pytest.fixture(scope="session")

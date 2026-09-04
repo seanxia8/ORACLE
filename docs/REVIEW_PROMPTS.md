@@ -120,7 +120,7 @@ A. REPRODUCIBILITY
    3. Verify the data manifest hash resolves to files that exist.
 
 B. TOY / SMOKE DETECTION (run these, report the output)
-   1. grep -rn "oracle_paired.toy\|demo_grid\|toy_\|smoke" experiments/ src/oracle_diag/
+   1. grep -rn "prometheus_simulation.toy\|demo_grid\|toy_\|smoke" experiments/ src/oracle_diag/
       Anything in a confirmatory path is a blocker.
    2. Find every test file. For each test, classify: ANALYTIC (checks a
       closed-form or known answer), CONTROL (checks a predicted direction on a

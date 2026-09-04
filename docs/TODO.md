@@ -66,7 +66,7 @@ threshold curves, extrapolation arm, hyperparameter table); Figure 1 monitor sta
 - [ ] Fill the Tier-1 → Tier-2 bridge table (§6) with a row per ORACLE-Paired family.
 
 ## Packages here
-- [ ] `src/oracle_paired`: Prometheus adapter (`prometheus_io`), NuBench response
+- [ ] `src/prometheus_simulation`: Prometheus adapter (`prometheus_io`), NuBench response
       reimplementation, clean-twin matching validated on the toy set (WP9).
 - [ ] Subject adapters for Tier 2/3 following the `Subject` interface in
       `experiments/oracle/oracle_cov/subjects.py` (`represent`, `outputs`, `jac_recon`, `jac_output`).

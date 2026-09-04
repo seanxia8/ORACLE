@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from oracle_paired.geometry import DetectorGeometry
+from prometheus_simulation.detector import DetectorGeometry
 
 # NuBench Table 1 (arXiv:2511.13111): module counts per geometry.
 EXPECTED = {

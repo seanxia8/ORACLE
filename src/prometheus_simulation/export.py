@@ -25,7 +25,7 @@ from typing import Any
 import numpy as np
 
 from .events import EventPulses
-from .geometry import DetectorGeometry
+from .detector import DetectorGeometry
 
 PULSE_COLUMNS = (
     "event_no", "om_id", "dom_x", "dom_y", "dom_z", "string_id",
@@ -85,7 +85,7 @@ def export_parquet(
     geometry: DetectorGeometry,
     truth_records: list[dict[str, Any]],
     out_dir: str | Path,
-    prefix: str = "oracle_paired",
+    prefix: str = "prometheus_simulation",
 ) -> tuple[Path, Path]:
     """Write <prefix>_pulses.parquet and <prefix>_truth.parquet."""
     import pandas as pd  # optional dependency, deferred

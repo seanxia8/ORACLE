@@ -280,8 +280,8 @@ def main() -> None:
     ap.add_argument("--params", type=Path,
                     default=HERE / "config" / "physics_default.yaml")
     ap.add_argument("--geodir", type=Path, default=None,
-                    help="defaults to the Prometheus clone, else oracle_paired's "
-                         "shipped geofiles")
+                    help="defaults to the Prometheus clone, else the geofiles "
+                         "shipped in data/geofiles/")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--n-events", type=int, default=None,
                     help="override n_events (use a small value for a smoke test)")

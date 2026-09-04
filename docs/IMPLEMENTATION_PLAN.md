@@ -44,7 +44,7 @@ Every rule below is enforced by something a reviewer can check, not by intent.
 6. **Seeds and provenance in every artifact.** Each result table carries the
    config hash, the git commit, the data manifest hash, and the seed list.
    Anything without them is dev output.
-7. **Toy generators never touch confirmatory paths.** `oracle_paired.toy` and
+7. **Toy generators never touch confirmatory paths.** `prometheus_simulation.toy` and
    any `demo_*` helper are import-forbidden under `experiments/` — a test
    greps for it (WP7). The tutorial notebook is documentation, not evidence.
 8. **Negative results are reportable.** Every comparison declares an
@@ -75,7 +75,7 @@ Every rule below is enforced by something a reviewer can check, not by intent.
 ```
 src/
   noise_module/          exists  — Tier-1 generator, Σ̂/Σ instrument
-  oracle_paired/         exists  — Tier-2 production (needs prometheus_io, WP9)
+  prometheus_simulation/         exists  — Tier-2 production (needs prometheus_io, WP9)
   tidmad_transformer/    exists  — Tier-1/3 subject model + training
   reconstruction_model/  exists  — DELight transformer (Tier-1 subject variant)
   oracle_diag/           NEW     — the diagnostics layer (WP1–WP7)
@@ -228,7 +228,7 @@ the positive-control ladder on Tier-1 dev data.
 Deliverables: `OutputNull(k)`, `OutputAligned(k)`, `NormMatchedRandom(k)` —
 representation-level perturbations at stage k built from the local Jacobian
 SVD, norm-matched to a declared displacement magnitude; input-level adapters
-that wrap `noise_module` N families (waveforms) and `oracle_paired`
+that wrap `noise_module` N families (waveforms) and `prometheus_simulation`
 interventions (point clouds) behind the same `Perturbation` protocol.
 AC: on the linear model, `OutputNull` changes outputs by < 1e-6 relative and
 `OutputAligned` by the predicted amount; norms match to 1e-6; on a *synthetic
@@ -277,7 +277,7 @@ held-out seed lists), experiment registry, data-manifest hashing, bootstrap
 over (event_group, perturbation_seed) with the correct nesting, `RESULT.md`
 generator (endpoint, estimate, CI, n, config hash, commit), and the
 **toy-import guard**: a test that fails if anything under `experiments/`
-imports `oracle_paired.toy` or any `demo_*` symbol; and the **figure
+imports `prometheus_simulation.toy` or any `demo_*` symbol; and the **figure
 provenance guard**: every figure under `latex/figures/` produced by the
 pipeline carries a sidecar `.json` naming its confirmatory `RESULT.md` and
 hashes, and a test fails on any figure whose sidecar points at `results/dev/`
@@ -342,7 +342,7 @@ prediction is stated in the pre-registration *before* the confirmatory run.
 
 ### WP9 — Tier-2 production and experiments (ORACLE-Paired) · 8 d + cluster · deps: WP1–WP7, D5 for released-number claims only
 
-Deliverables: `oracle_paired.prometheus_io` (Prometheus parquet →
+Deliverables: `prometheus_simulation.prometheus_io` (Prometheus parquet →
 `EventPhotons`, with schema test against a real Prometheus output file);
 cluster submission from `prometheus_config_pairs` — one injecting run with
 the **injection cylinder sized against ARCA, the larger geometry** (D1 caveat

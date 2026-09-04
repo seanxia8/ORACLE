@@ -9,17 +9,17 @@ import json
 import numpy as np
 import pytest
 
-from oracle_paired.export import (
+from prometheus_simulation.export import (
     PULSE_COLUMNS, TRUTH_COLUMNS, export_parquet, provenance_record,
 )
-from oracle_paired.interventions import ModuleLoss, apply_interventions
-from oracle_paired.matching import content_features, match_clean_controls
-from oracle_paired.response import ResponseConfig, emulate_response
-from oracle_paired.strata import (
+from prometheus_simulation.interventions import ModuleLoss, apply_interventions
+from prometheus_simulation.matching import content_features, match_clean_controls
+from prometheus_simulation.response import ResponseConfig, emulate_response
+from prometheus_simulation.strata import (
     edge_vertex_mask, horizontal_mask, inject_correlated_noise,
     low_energy_mask, overlay_pileup,
 )
-from oracle_paired.toy import toy_population
+from prometheus_simulation.toy import toy_population
 
 
 def _pulses(events, geometry, interventions=(), seed=21):

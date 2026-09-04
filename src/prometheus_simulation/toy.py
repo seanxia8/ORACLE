@@ -17,7 +17,7 @@ from __future__ import annotations
 import numpy as np
 
 from .events import EventPhotons
-from .geometry import DetectorGeometry
+from .detector import DetectorGeometry
 
 C_ICE_M_PER_NS = 0.2998 / 1.33  # group velocity of light in water/ice, m/ns
 

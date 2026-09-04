@@ -17,39 +17,47 @@ error mixes the geometry effect with the sample difference. Prometheus supports
 replaying a stored injection (`injection.lepton_injector.inject = False` plus
 `paths.injection_file`), which makes the comparison within-event.
 
-## Relationship to `oracle_paired`
+## What is in here
 
-The two packages are complementary and must not be merged carelessly:
+Two layers, one package. `oracle_paired` was merged in on 2026-09-04; keeping
+them apart split one experiment across two packages.
 
-| | `prometheus_simulation` (this) | `oracle_paired` |
-|---|---|---|
-| Prometheus | **calls it** | never imports it — emits JSON configs for the cluster |
-| geometry | parses the `.geo` files: offsets, common region, containment | `DetectorGeometry` (positions + string ids) for the response stage |
-| pairing | replays one injection **and recentres it per detector** | emits the `inject=False` config pairs |
-| detector response | not implemented here | `response.py` — the NuBench §3.2 emulation |
-| downstream | readout, baseline reconstruction, analysis report | N/S/U interventions, strata, content matching, Parquet export |
+| layer | modules |
+|---|---|
+| **geometry & injection** | `geometry.py` (.geo parsing, offsets, common region, containment), `simulate.py` (inject once, recentre, replay every arm), `physics.py` (the provenance-tagged parameter record), `plans.py` (Prometheus run-plan JSON for cluster dispatch, no Prometheus import) |
+| **detector response & cells** | `detector.py` (`DetectorGeometry`, the OM table), `events.py`, `response.py` (NuBench §3.2 emulation), `interventions.py` (N1–N5), `strata.py` (S and U families), `matching.py` (content-matched clean twins), `export.py` (Parquet with `injection_id`), `toy.py` |
+| **readout & analysis** | `readout.py`, `recon.py` (geometry-free baselines), `analyze.py` (headless report) |
 
-**One thing to fix in `oracle_paired`.** `config.py:prometheus_config_pairs`
-says *"Only `detector.geo_file` differs otherwise — that is the entire
-experimental manipulation."* That is not sufficient, and nothing in
-`oracle_paired` handles a detector offset. Prometheus applies the offset to the
-injection file **in place** and **only** on the `inject=True` path
-(`lepton_injector_utils.apply_detector_offset`), while
-`injection_from_LI_output` takes `**_` and **ignores** `detector_offset` on
-load. A stored injection therefore lives in the first detector's absolute
+`geometry.Geometry` parses the `.geo` files and owns offsets and containment;
+`detector.DetectorGeometry` is the OM-position table the response stage works
+on. Different jobs, deliberately different types.
+
+## The defect the merge fixed
+
+`plans.prometheus_config_pairs` (formerly `oracle_paired/config.py`) used to
+say *"Only `detector.geo_file` differs otherwise — that is the entire
+experimental manipulation."* It is not, and nothing in that package handled a
+detector offset.
+
+Prometheus applies the offset to the injection file **in place** and **only**
+on the `inject=True` path (`lepton_injector_utils.apply_detector_offset`),
+while `injection_from_LI_output` takes `**_` and **ignores** `detector_offset`
+on load. A stored injection therefore lives in the first detector's absolute
 frame. ORCA is centred at z = +95 m and ARCA at z = −3194 m, so replaying the
 ORCA injection into ARCA with only `geo_file` changed places every event about
-3.3 km away and **every replayed geometry yields zero hits**.
+3.3 km away and **every replayed arm yields zero hits**.
 
-`geometry.recentre_delta` + `simulate.recentre_injection` are the correction.
-Either `oracle_paired` should emit the recentred injection path per geometry,
-or config emission should route through this package.
+`prometheus_config_pairs` now emits a per-arm injection path plus the
+`recentre_delta_m` that produces it, and `simulate.build_event_set` applies it.
+`tests/test_configs.py::test_replay_recentre_delta_is_non_zero_for_offset_geometries`
+is the regression guard: it asserts the ORCA→ARCA translation really is a
+kilometre-scale shift.
 
 ## Quick start
 
 ```bash
 # Geometry work needs no clone: the .geo files fall back to
-# src/oracle_paired/data/geofiles/. Only running Prometheus needs this.
+# data/geofiles/. Only running Prometheus needs this.
 bash src/prometheus_simulation/fetch_prometheus.sh
 cd src/prometheus_simulation/external/prometheus
 bash install.sh --with-ppc          # NOT pip install -r requirements.txt:

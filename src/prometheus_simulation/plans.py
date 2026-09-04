@@ -114,25 +114,72 @@ def _base_config(plan: ProductionPlan, geometry: GeometryPlan) -> dict[str, Any]
 
 
 def prometheus_config_pairs(
-    plan: ProductionPlan, injection_file: str = "injection/paired_injection.h5"
+    plan: ProductionPlan,
+    injection_file: str = "injection/paired_injection.h5",
+    geodir: "str | None" = None,
 ) -> list[dict[str, Any]]:
     """One config dict per geometry.
 
-    The first geometry injects and writes injection_file; every later
-    geometry re-reads it with inject = False. Only detector.geo_file
-    differs otherwise — that is the entire experimental manipulation.
+    The first geometry injects and writes injection_file; every later geometry
+    re-reads it with inject = False.
+
+    Changing ``detector.geo_file`` is NOT the entire manipulation, which is what
+    this function used to claim. Prometheus writes the detector offset into the
+    injection file in place and only on the ``inject=True`` path
+    (``lepton_injector_utils.apply_detector_offset``), while
+    ``injection_from_LI_output`` takes ``**_`` and ignores ``detector_offset``
+    on load. The stored injection therefore lives in the FIRST detector's
+    absolute frame. Since the shipped geometries are centred anywhere from
+    z = +95 m (orca) to z = -3194 m (arca), replaying it verbatim places every
+    event kilometres from the next detector and that arm yields zero hits.
+
+    So each replaying config gets its OWN injection path plus the translation
+    that produces it. Apply it with
+    ``simulate.recentre_injection(src, dst, recentre_delta_m)`` before running
+    the arm; ``simulate.build_event_set`` does this for you.
     """
+    from pathlib import Path as _Path   # noqa: PLC0415
+
     configs = []
+    deltas = _recentre_deltas(plan, geodir)
     for i, geom in enumerate(plan.geometries):
         cfg = _base_config(plan, geom)
         li = cfg["injection"]["lepton_injector"]
         if i == 0:
             li["paths"]["injection_file"] = injection_file
+            cfg["_pairing"] = {"role": "inject", "recentre_delta_m": [0.0, 0.0, 0.0]}
         else:
+            stem = _Path(injection_file)
+            arm_file = str(stem.with_name(f"{stem.stem}__{_Path(geom.geo_file).stem}{stem.suffix}"))
             li["inject"] = False
-            li["paths"]["injection_file"] = injection_file
+            li["paths"]["injection_file"] = arm_file
+            cfg["_pairing"] = {
+                "role": "replay",
+                "source_injection_file": injection_file,
+                "recentre_delta_m": deltas[i],
+                "note": "run simulate.recentre_injection(source, injection_file, "
+                        "recentre_delta_m) before this config",
+            }
         configs.append(cfg)
     return configs
+
+
+def _recentre_deltas(plan: ProductionPlan, geodir: "str | None") -> list[list[float]]:
+    """Translation from the first geometry's frame into each other geometry's.
+
+    Pure geofile parsing -- no Prometheus import, keeping this module's
+    "never imports Prometheus" property intact. Returns zeros when the geofiles
+    cannot be located, so config emission still works offline; the caller is
+    then responsible for the recentring.
+    """
+    try:
+        from .geometry import default_geodir, load_geo, recentre_delta  # noqa: PLC0415
+        from pathlib import Path as _P                                  # noqa: PLC0415
+        base = _P(geodir) if geodir else default_geodir()
+        geos = [load_geo(base / _P(g.geo_file).name) for g in plan.geometries]
+    except Exception:
+        return [[0.0, 0.0, 0.0] for _ in plan.geometries]
+    return [recentre_delta(geos[0], g).tolist() for g in geos]
 
 
 def throughgoing_muon_plan(base: InjectionPlan, offset_m: float = 200.0) -> InjectionPlan:

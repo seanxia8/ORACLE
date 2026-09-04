@@ -117,7 +117,7 @@ for Tier 2 come from them.
 | Baselines: corrected univariate KS, RBF-MMD, classifier two-sample test, embedding mean/covariance distance, output and uncertainty tests | **reuse** — `alibi-detect` ships MMD, C2ST and KS drift detectors; cite, do not reimplement | all |
 | Five-arm attribution classifier (input / output+uncertainty / final embedding / all-generic / full layerwise) | reuse — scikit-learn regularized logistic regression, identical splits | all |
 | Conformal abstention, risk–coverage AUC | reuse (`MAPIE`) or ~50 lines of split conformal | 1, 2 |
-| Content-matched clean cells (audit P1.1) | **done** — `oracle_paired.matching` | 2 |
+| Content-matched clean cells (audit P1.1) | **done** — `prometheus_simulation.matching` | 2 |
 | Consequence variable K | angular error (trivial); `K_rel` via TIDMAD's upstream Brazil-band code (D2); `K_full` on the controlled simulator | 2 / 3 / 1 |
 | Activation-patching causal check (before any repair claim) | implement — substitute the clean stage-k representation into the perturbed forward pass; simple hook | 1, 2 |
 | LoRA repair | reuse — `peft` | 1, 2 |

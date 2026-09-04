@@ -19,7 +19,7 @@ from __future__ import annotations
 import numpy as np
 
 from .events import EventPhotons
-from .geometry import DetectorGeometry
+from .detector import DetectorGeometry
 
 
 # ----------------------------------------------------------------- S masks

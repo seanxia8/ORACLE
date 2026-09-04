@@ -68,7 +68,7 @@ PYTHONPATH=src python -m pytest src/prometheus_simulation/tests/ -q   # 11 tests
 ```
 
 They need no Prometheus clone: the geofiles are read from
-`src/oracle_paired/data/geofiles/` when `external/` is absent. They cover the
+`src/prometheus_simulation/data/geofiles/` when `external/` is absent. They cover the
 geometry parsing, the containment gate, the h5 vertex surgery,
 the readout, the pairing check (including that it FAILS on a deliberately
 broken pairing), and the reconstruction. **What they do not cover is

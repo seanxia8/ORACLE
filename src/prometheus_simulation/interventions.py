@@ -25,7 +25,7 @@ from typing import Any
 import numpy as np
 
 from .events import EventPhotons
-from .geometry import DetectorGeometry
+from .detector import DetectorGeometry
 from .response import ResponseConfig
 
 
