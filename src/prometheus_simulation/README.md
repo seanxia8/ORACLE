@@ -158,6 +158,14 @@ Two behaviours are compensated for in `simulate.run_arm` instead:
   unconditionally — so `force` only converts a typed error into a raw
   `FileExistsError`. A `--arm <name>` retry after a crash or OOM would fail on
   the leftover directory instead of resuming. We remove it first.
+- **`config.run.outfile` is a process-wide singleton.** Prometheus derives it
+  from `storage_prefix` only while it is `None`, so whoever sets it first fixes
+  it for the process and every later arm writes to that same path — while
+  reporting success, because from Prometheus' side nothing failed. `inject_once`
+  and `run_arm` both reset it, and `run_arm` then verifies a non-empty parquet
+  landed in the arm's own directory before returning. The parallel path never
+  showed this (fresh process per arm), so it was invisible where runs are
+  launched and fatal where they are debugged.
 - **The default tmpdir is `./.ppc_tmp`, relative to the working directory,** so
   concurrent ice arms would share one scratch directory. Each arm now gets its
   own under its output directory.

@@ -50,6 +50,11 @@ def stub_prometheus(monkeypatch):
             seen["name"] = cfg.photon_propagator.get("name")
             # mirror Prometheus: mkdir with exist_ok=False, force notwithstanding
             Path(seen["tmpdir"]).mkdir(parents=True, exist_ok=False)
+            # run_arm now gates on a non-empty parquet landing in the arm dir,
+            # so the stub has to produce one or the gate (correctly) fires.
+            out = Path(cfg.run["storage_prefix"])
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "out.parquet").write_bytes(b"PAR1" * 16)
 
     mod = types.ModuleType("prometheus")
     mod.Prometheus = _Prom

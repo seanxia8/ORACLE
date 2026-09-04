@@ -123,6 +123,12 @@ def inject_once(params: PhysicsParameters, plan_d: dict, geodir: Path,
     config.run.nevents = params.n_events
     config.run.random_state_seed = params.injection_seed
     config.run.storage_prefix = str(out) + "/"
+    # `config` is a process-wide singleton and Prometheus derives run.outfile
+    # from storage_prefix ONLY while outfile is None. Whoever sets it first
+    # fixes it for the process, so every later arm silently writes to that same
+    # path. Reset it here as well as in run_arm: a process that injects and
+    # then runs arms is exactly how this leaks.
+    config.run.outfile = None
     config.detector.geo_file = str(
         geodir / NUBENCH_GEOFILES[plan_d["reference_geometry"]])
 
@@ -236,6 +242,7 @@ def run_arm(arm: dict, params: PhysicsParameters, injection: Path, lic: Path,
 
     config.detector.geo_file = str(geo)
     config.run.storage_prefix = str(arm_dir) + "/"
+    config.run.outfile = None      # see inject_once: the singleton trap
     config.run.random_state_seed = arm["photon_seed"]
     config.injection.name = "LeptonInjector"
     config.injection.lepton_injector.inject = False       # <- the pairing switch
@@ -291,6 +298,22 @@ def run_arm(arm: dict, params: PhysicsParameters, injection: Path, lic: Path,
         "olympus_max_distance_m": params.olympus_max_distance_m,
     }, indent=2))
     Prometheus().sim()
+
+    # Prometheus reports success on the path it wrote, not the path we asked
+    # for, so a misrouted output looks identical to a good run. The first time
+    # this happened it cost 31 minutes and produced one file at the injection's
+    # path holding another arm's data. Verify where the data actually landed.
+    written = [f for f in sorted(arm_dir.glob("*.parquet")) if f.stat().st_size > 0]
+    if not written:
+        stray = sorted(out.rglob("*.parquet"))
+        raise RuntimeError(
+            f"arm {arm['arm']} reported success but wrote no non-empty parquet "
+            f"to {arm_dir}. Parquet files under {out}: "
+            f"{[str(s.relative_to(out)) for s in stray]}. "
+            "The usual cause is config.run.outfile surviving from a previous "
+            "run in this process -- it is a singleton and is only derived from "
+            "storage_prefix while it is None.")
+    return written
 
 
 def prepare_injection(params: PhysicsParameters, plan_d: dict, geodir: Path,
