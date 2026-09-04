@@ -142,15 +142,37 @@ def inject_once(params: PhysicsParameters, plan_d: dict, geodir: Path,
     # set_vertices(), so the cylinder only has to be a legal volume for LI --
     # it is sized to the common region so the pre-overwrite vertices are
     # already in the right neighbourhood.
-    sim.minimal_energy = params.energy_gev
-    sim.maximal_energy = params.energy_gev
     sim.power_law = params.power_law
     sim.min_zenith, sim.max_zenith = params.min_zenith_deg, params.max_zenith_deg
     sim.min_azimuth, sim.max_azimuth = params.min_azimuth_deg, params.max_azimuth_deg
     sim.cylinder_radius = plan_d["common_region"]["max_radius_m"]
     sim.cylinder_height = 2 * plan_d["common_region"]["max_abs_z_m"]
     sim.endcap_length = params.endcap_length_m
-    Prometheus().sim()
+
+    # LeptonInjector supports a single fixed energy natively -- SampleEnergy()
+    # (LeptonInjector.cxx:121) opens with
+    #     if(config.energyMinimum==config.energyMaximum)
+    #         return(config.energyMinimum); //return the only allowed energy
+    # but Prometheus' check_consistency (utils/config_mims.py:117-123) rejects
+    # min >= max, i.e. the wrapper is stricter than the library it wraps.
+    #
+    # That check runs inside Prometheus.__init__; inject() re-reads this same
+    # config object afterwards (prometheus.py:307-328 -> make_new_LI_injection),
+    # and config_mims only READS the energies to validate -- it derives and
+    # caches nothing from them. So pass a placeholder band through the
+    # constructor, then set the real single energy before sim().
+    #
+    # DO NOT collapse this back into a narrow band. The next branch of
+    # SampleEnergy samples LOG-UNIFORMLY between min and max whenever
+    # powerlawIndex == 1.0, which ours is -- so any band, however tight,
+    # silently turns the exactly fixed energy into a distribution. The two-step
+    # is what keeps it exact. `* 2.0` is deliberately an obvious placeholder
+    # rather than an epsilon that could be mistaken for intended physics.
+    sim.minimal_energy = params.energy_gev
+    sim.maximal_energy = params.energy_gev * 2.0     # placeholder, never sampled
+    prom = Prometheus()                              # check_consistency runs here
+    sim.minimal_energy = sim.maximal_energy = params.energy_gev
+    prom.sim()
 
     li = sorted(out.glob("*.h5")) or sorted(out.glob("*.hdf5"))
     if not li:
