@@ -233,6 +233,13 @@ def main() -> int:
         f"- reference geometry: {plan.get('reference_geometry')}",
         f"- fingerprint: {rec.get('fingerprint', 'n/a')}",
         f"- prometheus commit: {rec.get('environment', {}).get('prometheus_commit', 'n/a')}",
+        f"- host / libc: {rec.get('environment', {}).get('toolchain', {}).get('hostname', 'n/a')}"
+        f" / {rec.get('environment', {}).get('toolchain', {}).get('libc', 'n/a')}"
+        + (f" (container: {rec['environment']['toolchain']['container']})"
+           if rec.get('environment', {}).get('toolchain', {}).get('container') else ""),
+        f"- compiler: {rec.get('environment', {}).get('toolchain', {}).get('cxx', 'n/a')}",
+        f"- jax: {(rec.get('environment', {}).get('jax') or {}).get('default_backend', 'not installed')}"
+        f"  devices={(rec.get('environment', {}).get('jax') or {}).get('devices', [])}",
         "", "## Gates", "",
         f"- all arms paired: **{gates['all_arms_paired']}**",
         f"- vertices on the injection points: **{gates['vertices_on_points']}** "

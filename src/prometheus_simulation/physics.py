@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import platform
 import subprocess
 from dataclasses import asdict, dataclass, field
@@ -198,6 +199,68 @@ class PhysicsParameters:
         return path
 
 
+def _run(cmd: "list[str]") -> "str | None":
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        return r.stdout.strip().splitlines()[0] if r.returncode == 0 and r.stdout.strip() else None
+    except Exception:
+        return None
+
+
+def _toolchain() -> dict:
+    """What actually built and ran the simulator.
+
+    Prometheus is a native build -- PROPOSAL and LeptonInjector are C++ -- so
+    the dataset's provenance is incomplete without the toolchain. On an older
+    host this is not academic: a RHEL 8 box (glibc 2.28) cannot execute
+    Conan's prebuilt b2, which is linked against glibc 2.34, so PROPOSAL only
+    builds after b2 is rebuilt from source or inside a container. A run
+    produced under a hand-patched toolchain and one produced in the shipped
+    container are not obviously the same thing, and "reproducible" is a claim
+    about exactly this. Everything here is best-effort and never raises.
+    """
+    try:
+        libc = "-".join(x for x in platform.libc_ver() if x) or None
+    except Exception:
+        libc = None
+    container = None
+    for var in ("APPTAINER_CONTAINER", "SINGULARITY_CONTAINER"):
+        if os.environ.get(var):
+            container = f"apptainer:{os.environ[var]}"
+            break
+    if container is None and Path("/.dockerenv").exists():
+        container = "docker"
+    return {
+        "hostname": platform.node(),
+        "libc": libc,
+        "cc": _run([os.environ.get("CC", "gcc"), "--version"]),
+        "cxx": _run([os.environ.get("CXX", "g++"), "--version"]),
+        "container": container,
+        "conan": _run(["conan", "--version"]),
+        "nvidia_driver": _run(["nvidia-smi", "--query-gpu=driver_version",
+                               "--format=csv,noheader"]),
+        "gpu_names": _run(["nvidia-smi", "--query-gpu=name,compute_cap",
+                           "--format=csv,noheader"]),
+    }
+
+
+def _jax_devices() -> "dict | None":
+    """Which devices JAX actually used -- CPU or GPU, and which.
+
+    Recorded per run because the water arms (seven of the eight) go through
+    olympus, which is JAX, and whether they ran on the GPU is decided by which
+    jaxlib is installed rather than by anything in this config. Without this
+    the record cannot say which hardware produced the numbers.
+    """
+    try:
+        import jax   # noqa: PLC0415
+        return {"jax": jax.__version__,
+                "devices": [str(d) for d in jax.devices()],
+                "default_backend": jax.default_backend()}
+    except Exception:
+        return None
+
+
 def _environment() -> dict:
     def _git(cwd: Path) -> str | None:
         try:
@@ -216,6 +279,8 @@ def _environment() -> dict:
         "prometheus_commit": _git(prom) if prom.exists() else None,
         "prometheus_upstream": "https://github.com/Harvard-Neutrino/prometheus",
         "prometheus_licence": "LGPL-2.1",
+        "toolchain": _toolchain(),
+        "jax": _jax_devices(),
     }
 
 
