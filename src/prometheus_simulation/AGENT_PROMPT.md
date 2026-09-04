@@ -219,6 +219,33 @@ To scale later, raise `events_per_point` in
 `src/prometheus_simulation/config/physics_default.yaml`. **If you shard, shard
 the arms, never the injection** — every arm must replay the same file.
 
+### Running the arms in parallel
+
+The eight arms are independent — they all read the same immutable injection —
+so they parallelise with no coordination:
+
+```bash
+nvidia-smi --query-gpu=index,name,compute_cap,memory.used --format=csv
+# use only the IDLE GPUs; skip any with another process on it
+PYTHONPATH=src python -m prometheus_simulation.simulate \
+    --out runs/pilot --execute --gpus 1,2,3
+```
+
+This injects once, pins the injection by SHA-256 into `plan.json`, then runs
+each arm as its own process with `CUDA_VISIBLE_DEVICES` set, writing
+`runs/pilot/<arm>/run.log`. It exits non-zero if any arm fails.
+
+Separate processes, not threads: each arm needs its own JAX runtime pinned to
+one device, and JAX does not survive being forked after initialisation.
+
+**`XLA_PYTHON_CLIENT_PREALLOCATE=false` is set for you.** JAX otherwise grabs
+~75% of the card up front, which fails outright when another process already
+holds part of it. If an arm still OOMs, lower `olympus_photon_chunk` — never
+`olympus_max_distance_m`.
+
+Report `compute_cap` back: it is the `arch=` value the CUDA PPC build needs
+(8.6 → `arch=86`, 7.5 → `arch=75`), and only the ice arm depends on it.
+
 ## Step 3 — run the analysis
 
 ```bash

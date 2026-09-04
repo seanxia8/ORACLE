@@ -16,7 +16,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
+import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -253,6 +256,61 @@ def run_arm(arm: dict, params: PhysicsParameters, injection: Path, lic: Path,
     Prometheus().sim()
 
 
+GPU_ENV_NOTE = """\
+JAX preallocates ~75% of a GPU by default, which fails immediately when another
+process already holds part of the card (and on this box GPU 0 usually does).
+XLA_PYTHON_CLIENT_PREALLOCATE=false makes it allocate on demand instead."""
+
+
+def _arm_env(gpu: "int | None") -> dict:
+    env = dict(os.environ)
+    env["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+    env.setdefault("XLA_PYTHON_CLIENT_ALLOCATOR", "platform")
+    if gpu is not None:
+        env["CUDA_VISIBLE_DEVICES"] = str(gpu)
+    return env
+
+
+def dispatch_arms(out: Path, arms: "list[str]", gpus: "list[int] | None",
+                  jobs: int) -> dict:
+    """Run arms as separate processes, round-robin over the given GPUs.
+
+    Separate processes rather than threads or a ProcessPool: each arm needs its
+    own JAX runtime pinned to one device via CUDA_VISIBLE_DEVICES, and JAX does
+    not survive being forked after initialisation. The arms are independent by
+    construction -- they all read the same immutable injection -- so this is
+    embarrassingly parallel with no coordination.
+    """
+    import subprocess   # noqa: PLC0415
+
+    pending = list(arms)
+    running: list[tuple] = []
+    results: dict[str, int] = {}
+    while pending or running:
+        while pending and len(running) < jobs:
+            arm = pending.pop(0)
+            gpu = gpus[len(running) % len(gpus)] if gpus else None
+            log = out / arm / "run.log"
+            log.parent.mkdir(parents=True, exist_ok=True)
+            fh = open(log, "w")
+            cmd = [sys.executable, "-m", "prometheus_simulation.simulate",
+                   "--out", str(out), "--arm", arm, "--execute"]
+            proc = subprocess.Popen(cmd, env=_arm_env(gpu), stdout=fh,
+                                    stderr=subprocess.STDOUT)
+            print(f"  -> {arm}  (gpu={gpu if gpu is not None else 'cpu'})  log: {log}")
+            running.append((arm, proc, fh))
+        time.sleep(1.0)
+        for entry in list(running):
+            arm, proc, fh = entry
+            if proc.poll() is not None:
+                fh.close()
+                running.remove(entry)
+                results[arm] = proc.returncode
+                status = "ok" if proc.returncode == 0 else f"FAILED rc={proc.returncode}"
+                print(f"  <- {arm}: {status}")
+    return results
+
+
 def build_event_set(params: PhysicsParameters, geodir: Path, out: Path,
                     execute: bool = False) -> dict:
     plan_d = plan(params, geodir, out)
@@ -300,14 +358,58 @@ def main() -> None:
                     help="override n_events (use a small value for a smoke test)")
     ap.add_argument("--execute", action="store_true",
                     help="actually run Prometheus; without it only the plan is written")
+    ap.add_argument("--arm", default=None,
+                    help="run ONE arm from an existing plan.json (used by --jobs)")
+    ap.add_argument("--jobs", type=int, default=1,
+                    help="run this many arms concurrently, as separate processes")
+    ap.add_argument("--gpus", default=None,
+                    help="comma-separated GPU ids to spread arms over, e.g. 1,2,3. "
+                         "Omit to run on the CPU. Skip any GPU already in use.")
     a = ap.parse_args()
 
     geodir = a.geodir or default_geodir()
     params = PhysicsParameters.from_yaml(a.params) if a.params.exists() \
         else PhysicsParameters()
+
+    # single-arm mode: replay one arm of an existing set, in this process
+    if a.arm:
+        plan_d = json.loads((a.out / "plan.json").read_text())
+        arm = next((x for x in plan_d["arms"] if x["arm"] == a.arm), None)
+        if arm is None:
+            raise SystemExit(f"no arm {a.arm!r} in {a.out/'plan.json'}")
+        injection = Path(plan_d["injection_file"])
+        lics = sorted((a.out / "_injection").glob("*.lic"))
+        if not lics:
+            raise SystemExit(f"no .lic in {a.out/'_injection'}")
+        run_arm(arm, params, injection, lics[0], geodir, a.out)
+        return
+
     if a.n_events:
         params.n_events = a.n_events
-    p = build_event_set(params, geodir, a.out, a.execute)
+    gpus = [int(g) for g in a.gpus.split(",")] if a.gpus else None
+    parallel = a.execute and (a.jobs > 1 or gpus)
+
+    # In parallel mode, inject once here and let the dispatcher run the arms.
+    p = build_event_set(params, geodir, a.out, a.execute and not parallel)
+    if parallel:
+        p = build_event_set(params, geodir, a.out, execute=False)
+        inj_dir = a.out / "_injection"
+        injection = inject_once(params, p, geodir, inj_dir)
+        ref_offset = np.asarray(p["reference_offset_m"])
+        targets = np.array([ref_offset + np.asarray(params.injection_points[n])
+                            for n in p["event_point_assignment"]])
+        set_vertices(injection, targets)
+        p["injection_file"] = str(injection)
+        p["injection_sha256"] = _sha256(injection)
+        (a.out / "plan.json").write_text(json.dumps(p, indent=2))
+        print(f"injection written and pinned: {p['injection_sha256'][:16]}")
+        print(GPU_ENV_NOTE)
+        rc = dispatch_arms(a.out, [x["arm"] for x in p["arms"]], gpus,
+                           max(a.jobs, len(gpus) if gpus else 1))
+        bad = {k: v for k, v in rc.items() if v != 0}
+        if bad:
+            print(f"\nARMS FAILED: {bad} -- see each arm's run.log", file=sys.stderr)
+            raise SystemExit(1)
     print(json.dumps({k: v for k, v in p.items() if k != "arms"}, indent=2))
     print(f"arms: {[x['arm'] for x in p['arms']]}")
     if params.unresolved():
