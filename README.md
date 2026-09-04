@@ -1,4 +1,4 @@
-# Consequence-Aware Failure Diagnostics for Particle Reconstruction
+# Verifying Experimental failures via Representation-based Inference for Transient Anomaly Signatures - VERITAS
 
 This repository is a research concept-note and feasibility package for studying
 failure diagnostics in learned particle-reconstruction systems. It asks two
